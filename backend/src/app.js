@@ -12,6 +12,11 @@ const studentRoutes = require('./routes/studentRoutes');
 const companyRoutes = require('./routes/companyRoutes');
 const driveRoutes = require('./routes/driveRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
+const interviewRoutes = require('./routes/interviewRoutes');
+const resultRoutes = require('./routes/resultRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
 
@@ -76,6 +81,11 @@ app.use('/api/v1/students', studentRoutes);
 app.use('/api/v1/companies', companyRoutes);
 app.use('/api/v1/drives', driveRoutes);
 app.use('/api/v1/applications', applicationRoutes);
+app.use('/api/v1/interviews', interviewRoutes);
+app.use('/api/v1/results', resultRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/reports', reportRoutes);
 
 // 404 Route Catch-all
 app.use('*', (req, res) => {

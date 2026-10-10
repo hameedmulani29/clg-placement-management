@@ -9,6 +9,9 @@ const { errorHandler } = require('./middleware/errorHandler');
 const { apiRateLimiter } = require('./middleware/rateLimiter');
 const authRoutes = require('./routes/authRoutes');
 const studentRoutes = require('./routes/studentRoutes');
+const companyRoutes = require('./routes/companyRoutes');
+const driveRoutes = require('./routes/driveRoutes');
+const applicationRoutes = require('./routes/applicationRoutes');
 
 const app = express();
 
@@ -70,6 +73,9 @@ app.get('/api/v1/health', (req, res) => {
 // API Routes Mounting
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/students', studentRoutes);
+app.use('/api/v1/companies', companyRoutes);
+app.use('/api/v1/drives', driveRoutes);
+app.use('/api/v1/applications', applicationRoutes);
 
 // 404 Route Catch-all
 app.use('*', (req, res) => {

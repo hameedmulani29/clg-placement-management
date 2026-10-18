@@ -17,6 +17,7 @@ const resultRoutes = require('./routes/resultRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+const resumeRoutes = require('./routes/resumeRoutes');
 
 const app = express();
 
@@ -86,6 +87,7 @@ app.use('/api/v1/results', resultRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/reports', reportRoutes);
+app.use('/api/v1/resumes', resumeRoutes);
 
 // 404 Route Catch-all
 app.use('*', (req, res) => {

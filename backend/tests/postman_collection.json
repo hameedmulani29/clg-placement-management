@@ -1,0 +1,180 @@
+{
+  "info": {
+    "name": "PlaceCloud - College Placement Management System API",
+    "description": "Complete Postman collection for manual and automated REST API verification across Student, Admin, and Recruiter roles.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api/v1" },
+    { "key": "adminToken", "value": "" },
+    { "key": "recruiterToken", "value": "" },
+    { "key": "studentToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/health"
+          }
+        },
+        {
+          "name": "Student Login",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"arjun.sharma@college.edu\",\n  \"password\": \"StudentPassword123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@college.edu\",\n  \"password\": \"AdminPassword123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Recruiter Login",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"recruiter.google@google.com\",\n  \"password\": \"RecruiterPassword123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Current Session (Me)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/me",
+            "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Student Profile & Resumes",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/students/me",
+            "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }]
+          }
+        },
+        {
+          "name": "Update My Profile Skills",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/students/me",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{studentToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876543210\",\n  \"skills\": [\"React.js\", \"Node.js\", \"AWS S3\", \"MongoDB\", \"Docker\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Presigned Resume View URL",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/resumes/view/{{studentId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Placement Drives & Eligibility",
+      "item": [
+        {
+          "name": "List All Drives",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/drives",
+            "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }]
+          }
+        },
+        {
+          "name": "Get Drive Details with Eligibility",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/drives/{{driveId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }]
+          }
+        },
+        {
+          "name": "Apply for Placement Drive",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/applications",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{studentToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"placementDriveId\": \"{{driveId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Inspect Eligible Candidates Cohort (Admin)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/drives/{{driveId}}/eligible-students",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Analytics & CSV Export",
+      "item": [
+        {
+          "name": "Admin Placement Summary",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/analytics/admin-summary",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }]
+          }
+        },
+        {
+          "name": "Department-Wise Statistics",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/analytics/department-wise",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }]
+          }
+        },
+        {
+          "name": "Export Placement CSV Report",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/reports/export-csv",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }]
+          }
+        }
+      ]
+    }
+  ]
+}

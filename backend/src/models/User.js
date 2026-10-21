@@ -1,66 +1,58 @@
-const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { BaseModel, registerModel } = require('./BaseModel');
+const MongoUser = require('./mongoose/User');
+const { createModelBridge } = require('./modelBridge');
 
-const userSchema = new mongoose.Schema(
-  {
-    email: {
-      type: String,
-      required: [true, 'Email is required'],
-      unique: true,
-      lowercase: true,
-      trim: true,
-      match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address'],
-    },
-    password: {
-      type: String,
-      required: [true, 'Password is required'],
-      minlength: [6, 'Password must be at least 6 characters'],
-      select: false, // Don't return password in queries by default
-    },
-    role: {
-      type: String,
-      required: [true, 'Role is required'],
-      enum: {
-        values: ['student', 'admin', 'recruiter'],
-        message: 'Role must be either student, admin, or recruiter',
-      },
-      index: true,
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
-  },
-  {
-    timestamps: true,
+class User extends BaseModel {
+  static tableName = 'users';
+  static booleanFields = ['isActive'];
+
+  constructor(data = {}) {
+    super(data);
+    if (this.email) {
+      this.email = this.email.toLowerCase().trim();
+    }
+    if (this.isActive === undefined) {
+      this.isActive = true;
+    }
   }
-);
 
-// Pre-save hook: Hash password with bcrypt before saving
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
+  async save() {
+    // Hash password if it is not already a bcrypt hash
+    if (this.password && !this.password.startsWith('$2')) {
+      const salt = bcrypt.genSaltSync(10);
+      this.password = bcrypt.hashSync(this.password, salt);
+    }
+    return super.save();
   }
-});
 
-// Instance method to check password validity
-userSchema.methods.comparePassword = async function (candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
-};
+  async comparePassword(candidatePassword) {
+    if (!this.password) return false;
+    return bcrypt.compare(candidatePassword, this.password);
+  }
 
-// Remove password when serializing user document to JSON
-userSchema.methods.toJSON = function () {
-  const user = this.toObject();
-  delete user.password;
-  return user;
-};
+  toJSON() {
+    const user = { ...this };
+    delete user.password;
+    return user;
+  }
 
-const User = mongoose.model('User', userSchema);
+  toObject() {
+    const user = { ...this };
+    delete user.password;
+    return user;
+  }
 
-module.exports = User;
+  static _fromRow(row, includePassword = false) {
+    if (!row) return null;
+    const instance = super._fromRow(row);
+    if (!includePassword) {
+      delete instance.password;
+    }
+    return instance;
+  }
+}
+
+registerModel('User', User);
+
+module.exports = createModelBridge(User, MongoUser);

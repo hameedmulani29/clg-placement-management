@@ -1,40 +1,22 @@
-const mongoose = require('mongoose');
+const { BaseModel, registerModel } = require('./BaseModel');
+const MongoRecruiterProfile = require('./mongoose/RecruiterProfile');
+const { createModelBridge } = require('./modelBridge');
 
-const recruiterProfileSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-      unique: true,
-      index: true,
-    },
-    companyId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Company',
-      required: [true, 'Associated company is required'],
-      index: true,
-    },
-    designation: {
-      type: String,
-      required: [true, 'Designation / job title is required'],
-      trim: true,
-    },
-    phone: {
-      type: String,
-      default: '',
-      trim: true,
-    },
-    isVerified: {
-      type: Boolean,
-      default: true,
-    },
-  },
-  {
-    timestamps: true,
+class RecruiterProfile extends BaseModel {
+  static tableName = 'recruiter_profiles';
+  static booleanFields = ['isVerified'];
+  static relations = {
+    userId: 'User',
+    companyId: 'Company',
+  };
+
+  constructor(data = {}) {
+    super(data);
+    if (this.phone === undefined) this.phone = '';
+    if (this.isVerified === undefined) this.isVerified = true;
   }
-);
+}
 
-const RecruiterProfile = mongoose.model('RecruiterProfile', recruiterProfileSchema);
+registerModel('RecruiterProfile', RecruiterProfile);
 
-module.exports = RecruiterProfile;
+module.exports = createModelBridge(RecruiterProfile, MongoRecruiterProfile);

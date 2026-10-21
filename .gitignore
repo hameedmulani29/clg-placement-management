@@ -41,3 +41,11 @@ Thumbs.db
 
 # Uploaded scratch files (local fallback storage)
 backend/uploads/
+
+# SQLite database files
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Markdown documentation files
+*.md

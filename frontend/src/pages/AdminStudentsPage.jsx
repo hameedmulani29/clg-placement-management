@@ -1,16 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import LoadingSpinner from '../components/LoadingSpinner';
-import EmptyState from '../components/EmptyState';
+import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
-import { Search, Users, Edit3, Trash2, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+import ConfirmDialog from '../components/ConfirmDialog';
+import Pagination from '../components/Pagination';
+import EmptyState from '../components/EmptyState';
+import { SkeletonTable } from '../components/LoadingSpinner';
+import { useDebounce } from '../hooks/useDebounce';
+import { useToast } from '../context/ToastContext';
+import {
+  Search,
+  Users,
+  Edit3,
+  Trash2,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  ExternalLink,
+  GraduationCap,
+  Shield,
+  Loader2,
+} from 'lucide-react';
 
 const AdminStudentsPage = () => {
+  const toast = useToast();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [department, setDepartment] = useState('');
   const [minCgpa, setMinCgpa] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  const debouncedSearch = useDebounce(search, 250);
 
   // Edit Modal State
   const [editingStudent, setEditingStudent] = useState(null);
@@ -18,15 +41,23 @@ const AdminStudentsPage = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
 
+  // Confirm Delete Dialog State
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Resume viewing state
+  const [loadingResumeId, setLoadingResumeId] = useState(null);
+
   useEffect(() => {
     fetchStudents();
-  }, [department, minCgpa]);
+  }, [debouncedSearch, department, minCgpa]);
 
   const fetchStudents = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (search.trim()) params.append('search', search.trim());
+      if (debouncedSearch.trim()) params.append('search', debouncedSearch.trim());
       if (department) params.append('department', department);
       if (minCgpa) params.append('minCgpa', minCgpa);
 
@@ -47,7 +78,7 @@ const AdminStudentsPage = () => {
       cgpa: student.cgpa,
       activeBacklogs: student.activeBacklogs,
       department: student.department,
-      phone: student.phone,
+      phone: student.phone || '',
     });
     setIsEditModalOpen(true);
   };
@@ -59,61 +90,141 @@ const AdminStudentsPage = () => {
       const res = await api.put(`/students/${editingStudent._id}`, editFormData);
       if (res.data.success) {
         setIsEditModalOpen(false);
+        toast.success(
+          'Student Record Updated',
+          `Academic records updated for ${editingStudent.firstName} (${editingStudent.collegeId}).`
+        );
         await fetchStudents();
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update student');
+      toast.error('Update Failed', err.response?.data?.message || 'Failed to update student.');
     } finally {
       setUpdating(false);
     }
   };
 
-  const handleDeleteStudent = async (id, roll) => {
-    if (window.confirm(`Are you sure you want to permanently delete student ${roll}?`)) {
-      try {
-        await api.delete(`/students/${id}`);
-        setStudents((prev) => prev.filter((s) => s._id !== id));
-      } catch (err) {
-        alert(err.response?.data?.message || 'Failed to delete student');
-      }
+  const promptDeleteStudent = (student) => {
+    setStudentToDelete(student);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!studentToDelete) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/students/${studentToDelete._id}`);
+      setStudents((prev) => prev.filter((s) => s._id !== studentToDelete._id));
+      setIsDeleteDialogOpen(false);
+      toast.success(
+        'Student Profile Deleted',
+        `Student ${studentToDelete.collegeId} deleted with audit trail record logged.`
+      );
+    } catch (err) {
+      toast.error('Deletion Failed', err.response?.data?.message || 'Could not delete student record.');
+    } finally {
+      setDeleting(false);
     }
   };
 
   const handleViewResume = async (studentId) => {
+    setLoadingResumeId(studentId);
     try {
       const res = await api.get(`/resumes/view/${studentId}`);
       if (res.data.success) {
         window.open(res.data.data.downloadUrl, '_blank');
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Could not open resume.');
+      toast.error('Resume Access Failed', err.response?.data?.message || 'Could not generate presigned resume URL.');
+    } finally {
+      setLoadingResumeId(null);
     }
   };
 
+  const totalPages = Math.ceil(students.length / pageSize) || 1;
+  const paginatedStudents = students.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
     <div>
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a' }}>Student Records Directory</h1>
-        <p style={{ color: '#64748b', fontSize: '0.92rem' }}>Audit and manage student academic credentials and resume attachments</p>
-      </div>
+      <PageHeader
+        title="Student Academic Directory & Records"
+        subtitle="Search student records, audit verified credentials, update academic standing, and inspect cloud resumes"
+        breadcrumbs={[
+          { label: 'Admin' },
+          { label: 'Student Directory' },
+        ]}
+        actions={
+          <span
+            style={{
+              fontSize: 'var(--text-xs)',
+              color: 'var(--text-muted)',
+              backgroundColor: 'var(--bg-surface-subtle)',
+              border: '1px solid var(--border-default)',
+              padding: '0.4rem 0.75rem',
+              borderRadius: 'var(--radius-full)',
+              fontWeight: 'var(--font-weight-semibold)',
+            }}
+          >
+            {students.length} students registered
+          </span>
+        }
+      />
 
-      {/* Filter Bar */}
-      <div className="card" style={{ padding: '1.25rem', marginBottom: '2rem' }}>
-        <form onSubmit={(e) => { e.preventDefault(); fetchStudents(); }} style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', flex: '1 1 250px' }}>
+      {/* Discovery & Filters Card */}
+      <div className="card" style={{ padding: '1.25rem', marginBottom: '1.75rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: '1 1 280px' }}>
             <input
               type="text"
-              placeholder="Search by student name, roll number..."
+              placeholder="Search by student name, roll number, or skills..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ paddingLeft: '2.5rem' }}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              style={{ paddingLeft: '2.4rem', fontSize: 'var(--text-xs)' }}
+              aria-label="Search student records"
             />
-            <Search size={18} color="#94a3b8" style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }} />
+            <Search
+              size={15}
+              style={{
+                position: 'absolute',
+                left: '0.85rem',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--text-muted)',
+              }}
+              aria-hidden="true"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                style={{
+                  position: 'absolute',
+                  right: '0.75rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-muted)',
+                  padding: '0.2rem',
+                }}
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
           <div style={{ flex: '1 1 200px' }}>
-            <select value={department} onChange={(e) => setDepartment(e.target.value)}>
-              <option value="">All Departments</option>
+            <select
+              value={department}
+              onChange={(e) => {
+                setDepartment(e.target.value);
+                setCurrentPage(1);
+              }}
+              style={{ fontSize: 'var(--text-xs)' }}
+              aria-label="Filter by department"
+            >
+              <option value="">All Academic Branches</option>
               <option value="Computer Science">Computer Science</option>
               <option value="Information Technology">Information Technology</option>
               <option value="Electronics & Communication">Electronics & Communication</option>
@@ -129,114 +240,165 @@ const AdminStudentsPage = () => {
               step="0.5"
               placeholder="Min CGPA (e.g. 8.0)"
               value={minCgpa}
-              onChange={(e) => setMinCgpa(e.target.value)}
+              onChange={(e) => {
+                setMinCgpa(e.target.value);
+                setCurrentPage(1);
+              }}
+              style={{ fontSize: 'var(--text-xs)' }}
+              aria-label="Filter by minimum CGPA"
             />
           </div>
 
-          <button type="submit" className="btn btn-primary">Filter</button>
-        </form>
+          {(search || department || minCgpa) && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setDepartment('');
+                setMinCgpa('');
+                setCurrentPage(1);
+              }}
+              className="btn btn-ghost btn-sm"
+              style={{ color: 'var(--danger)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+            >
+              <X size={13} /> Reset Filters
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* Students Data Table */}
       {loading ? (
-        <LoadingSpinner message="Loading student records..." />
+        <SkeletonTable rows={8} cols={7} />
       ) : students.length === 0 ? (
-        <EmptyState title="No Students Found" description="Try adjusting search or filter criteria." />
+        <EmptyState
+          icon={Users}
+          title="No Students Found"
+          description={
+            search || department || minCgpa
+              ? 'No student profiles match your search criteria.'
+              : 'There are no students currently registered in the database.'
+          }
+        />
       ) : (
         <div className="table-container">
-          <table>
+          <table aria-label="Student database directory table">
             <thead>
               <tr>
-                <th>Roll Number</th>
-                <th>Full Name</th>
-                <th>Department</th>
-                <th>CGPA</th>
-                <th>Backlogs</th>
-                <th>Batch</th>
-                <th>Resume</th>
-                <th>Actions</th>
+                <th scope="col">Student Candidate</th>
+                <th scope="col">Roll ID</th>
+                <th scope="col">Branch / Dept</th>
+                <th scope="col">CGPA / Backlogs</th>
+                <th scope="col">Graduation Year</th>
+                <th scope="col">Cloud Resume</th>
+                <th scope="col">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {students.map((student) => (
-                <tr key={student._id}>
-                  <td><strong>{student.collegeId}</strong></td>
-                  <td>
-                    <div style={{ fontWeight: 600 }}>{student.firstName} {student.lastName}</div>
-                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{student.userId?.email}</div>
-                  </td>
-                  <td>{student.department}</td>
-                  <td>
-                    <span style={{ fontWeight: 800, color: student.cgpa >= 8 ? '#10b981' : '#4f46e5' }}>
-                      {student.cgpa}
-                    </span>
-                  </td>
-                  <td>
-                    <span style={{ color: student.activeBacklogs > 0 ? '#ef4444' : '#64748b', fontWeight: 600 }}>
-                      {student.activeBacklogs}
-                    </span>
-                  </td>
-                  <td>{student.graduationYear}</td>
-                  <td>
-                    {student.resumeS3Key ? (
-                      <button
-                        onClick={() => handleViewResume(student._id)}
-                        className="btn btn-secondary btn-sm"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem' }}
-                      >
-                        <FileText size={13} color="#4f46e5" /> View S3
-                      </button>
-                    ) : (
-                      <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Missing</span>
-                    )}
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '0.4rem' }}>
-                      <button onClick={() => openEditModal(student)} className="btn btn-secondary btn-sm" title="Edit Record">
-                        <Edit3 size={14} />
-                      </button>
-                      <button onClick={() => handleDeleteStudent(student._id, student.collegeId)} className="btn btn-outline-danger btn-sm" title="Delete Student">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {paginatedStudents.map((st) => {
+                const isViewingResume = loadingResumeId === st._id;
+                return (
+                  <tr key={st._id}>
+                    <td>
+                      <div style={{ fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)' }}>
+                        {st.firstName} {st.lastName}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        {st.userId?.email || 'N/A'} • {st.phone || 'No phone'}
+                      </div>
+                    </td>
+                    <td style={{ fontFamily: 'var(--font-family-mono)', fontSize: 'var(--text-xs)' }}>
+                      {st.collegeId}
+                    </td>
+                    <td>{st.department}</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
+                        <strong style={{ color: 'var(--primary)', fontSize: 'var(--text-sm)' }}>
+                          {st.cgpa}
+                        </strong>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          ({st.activeBacklogs} backlogs)
+                        </span>
+                      </div>
+                    </td>
+                    <td>{st.graduationYear}</td>
+                    <td>
+                      {st.resumeS3Key ? (
+                        <button
+                          type="button"
+                          onClick={() => handleViewResume(st._id)}
+                          disabled={isViewingResume}
+                          className="btn btn-secondary btn-xs"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                          title="Open 15-minute presigned AWS S3 resume link"
+                        >
+                          {isViewingResume ? (
+                            <Loader2 size={13} style={{ animation: 'spin 0.9s linear infinite' }} />
+                          ) : (
+                            <FileText size={13} style={{ color: 'var(--primary)' }} />
+                          )}
+                          <span>Resume (S3)</span>
+                        </button>
+                      ) : (
+                        <span style={{ color: 'var(--text-subtle)', fontSize: '0.72rem' }}>
+                          Missing
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(st)}
+                          className="btn btn-secondary btn-xs"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                          title={`Edit credentials for ${st.collegeId}`}
+                        >
+                          <Edit3 size={13} /> Edit
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => promptDeleteStudent(st)}
+                          className="btn btn-outline-danger btn-xs"
+                          style={{ padding: '0.3rem 0.5rem' }}
+                          title={`Delete student ${st.collegeId}`}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalRecords={students.length}
+            pageSize={pageSize}
+            onPageChange={(p) => setCurrentPage(p)}
+          />
         </div>
       )}
 
-      {/* Edit Student Academic Details Modal */}
-      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={`Edit Student: ${editingStudent?.collegeId}`}>
-        <form onSubmit={handleUpdateStudent} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div className="grid-cols-2">
-            <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '0.3rem' }}>CGPA (0 - 10.0)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                max="10"
-                required
-                value={editFormData.cgpa}
-                onChange={(e) => setEditFormData({ ...editFormData, cgpa: e.target.value })}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '0.3rem' }}>Active Backlogs</label>
-              <input
-                type="number"
-                min="0"
-                required
-                value={editFormData.activeBacklogs}
-                onChange={(e) => setEditFormData({ ...editFormData, activeBacklogs: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '0.3rem' }}>Department</label>
+      {/* Edit Student Credentials Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={`Edit Student Academic Record`}
+        subtitle={`${editingStudent?.firstName} ${editingStudent?.lastName} • Roll ID: ${editingStudent?.collegeId}`}
+        maxWidth="500px"
+      >
+        <form onSubmit={handleUpdateStudent} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="form-group">
+            <label htmlFor="edit-dept" className="form-label">
+              Academic Department <span className="required">*</span>
+            </label>
             <select
+              id="edit-dept"
               value={editFormData.department}
               onChange={(e) => setEditFormData({ ...editFormData, department: e.target.value })}
             >
@@ -249,21 +411,75 @@ const AdminStudentsPage = () => {
             </select>
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '0.3rem' }}>Phone</label>
+          <div className="grid-cols-2">
+            <div className="form-group">
+              <label htmlFor="edit-cgpa" className="form-label">
+                Cumulative CGPA (0-10) <span className="required">*</span>
+              </label>
+              <input
+                id="edit-cgpa"
+                type="number"
+                step="0.01"
+                min="0"
+                max="10"
+                required
+                value={editFormData.cgpa}
+                onChange={(e) => setEditFormData({ ...editFormData, cgpa: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="edit-backlogs" className="form-label">
+                Active Standing Backlogs <span className="required">*</span>
+              </label>
+              <input
+                id="edit-backlogs"
+                type="number"
+                min="0"
+                required
+                value={editFormData.activeBacklogs}
+                onChange={(e) => setEditFormData({ ...editFormData, activeBacklogs: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="edit-phone" className="form-label">
+              Contact Phone
+            </label>
             <input
-              type="text"
+              id="edit-phone"
+              type="tel"
               value={editFormData.phone}
               onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
             />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-            <button type="button" onClick={() => setIsEditModalOpen(false)} className="btn btn-secondary">Cancel</button>
-            <button type="submit" disabled={updating} className="btn btn-primary">{updating ? 'Saving...' : 'Update Record'}</button>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setIsEditModalOpen(false)}
+              disabled={updating}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={updating}>
+              {updating ? 'Saving Changes...' : 'Save Academic Changes'}
+            </button>
           </div>
         </form>
       </Modal>
+
+      {/* Accessible Destructive Delete Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Permanently Delete Student Profile"
+        description={`Are you sure you want to permanently delete student ${studentToDelete?.firstName} ${studentToDelete?.lastName} (Roll ID: ${studentToDelete?.collegeId})? This will cascade remove their applications and create an immutable audit log entry.`}
+        confirmText="Confirm & Delete Student"
+        loading={deleting}
+      />
     </div>
   );
 };

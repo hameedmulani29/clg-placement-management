@@ -1,47 +1,23 @@
-const mongoose = require('mongoose');
+const { BaseModel, registerModel } = require('./BaseModel');
+const MongoNotification = require('./mongoose/Notification');
+const { createModelBridge } = require('./modelBridge');
 
-const notificationSchema = new mongoose.Schema(
-  {
-    recipientId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: [true, 'Recipient user ID is required'],
-      index: true,
-    },
-    title: {
-      type: String,
-      required: [true, 'Notification title is required'],
-      trim: true,
-    },
-    message: {
-      type: String,
-      required: [true, 'Notification message is required'],
-      trim: true,
-    },
-    type: {
-      type: String,
-      enum: {
-        values: ['application', 'drive', 'interview', 'result', 'system'],
-        message: 'Invalid notification type',
-      },
-      default: 'system',
-      index: true,
-    },
-    isRead: {
-      type: Boolean,
-      default: false,
-      index: true,
-    },
-    metadata: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {},
-    },
-  },
-  {
-    timestamps: true,
+class Notification extends BaseModel {
+  static tableName = 'notifications';
+  static booleanFields = ['isRead'];
+  static jsonFields = ['metadata'];
+  static relations = {
+    recipientId: 'User',
+  };
+
+  constructor(data = {}) {
+    super(data);
+    if (this.isRead === undefined) this.isRead = false;
+    if (!this.type) this.type = 'system';
+    if (!this.metadata) this.metadata = {};
   }
-);
+}
 
-const Notification = mongoose.model('Notification', notificationSchema);
+registerModel('Notification', Notification);
 
-module.exports = Notification;
+module.exports = createModelBridge(Notification, MongoNotification);

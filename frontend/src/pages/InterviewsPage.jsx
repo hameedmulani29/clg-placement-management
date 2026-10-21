@@ -1,12 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import LoadingSpinner from '../components/LoadingSpinner';
+import PageHeader from '../components/PageHeader';
 import EmptyState from '../components/EmptyState';
-import { Calendar, Video, Clock, Building2, CheckCircle2 } from 'lucide-react';
+import Tabs from '../components/Tabs';
+import { SkeletonCard } from '../components/LoadingSpinner';
+import { formatDate, formatDateTime } from '../utils/formatters';
+import {
+  Calendar,
+  Video,
+  Clock,
+  Building2,
+  CheckCircle2,
+  ExternalLink,
+  MapPin,
+  AlertCircle,
+  Sparkles,
+} from 'lucide-react';
 
 const InterviewsPage = () => {
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('upcoming');
 
   useEffect(() => {
     fetchInterviews();
@@ -25,34 +39,61 @@ const InterviewsPage = () => {
     }
   };
 
-  if (loading) return <LoadingSpinner message="Retrieving scheduled interview calls..." />;
+  const now = new Date();
+  const upcomingInterviews = interviews.filter((i) => new Date(i.scheduledDate) >= now);
+  const pastInterviews = interviews.filter((i) => new Date(i.scheduledDate) < now);
+
+  const displayedInterviews =
+    activeTab === 'upcoming'
+      ? upcomingInterviews
+      : activeTab === 'past'
+      ? pastInterviews
+      : interviews;
+
+  const tabs = [
+    { id: 'upcoming', label: 'Upcoming Calls', count: upcomingInterviews.length },
+    { id: 'all', label: 'All Interview Calls', count: interviews.length },
+    { id: 'past', label: 'Completed Rounds', count: pastInterviews.length },
+  ];
 
   return (
-    <div>
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a' }}>Interview Calendar & Calls</h1>
-        <p style={{ color: '#64748b', fontSize: '0.92rem' }}>Access your scheduled virtual meeting links and recruiter instructions</p>
+    <div style={{ maxWidth: '960px', margin: '0 auto' }}>
+      <PageHeader
+        title="Interview Schedule & Virtual Calls"
+        subtitle="Access your scheduled virtual meeting links, campus room venues, and recruiter round instructions"
+        breadcrumbs={[
+          { label: 'Portal', to: '/dashboard' },
+          { label: 'Interviews' },
+        ]}
+      />
+
+      {/* Tabs */}
+      <div style={{ marginBottom: '1.75rem' }}>
+        <Tabs tabs={tabs} activeTab={activeTab} onChange={(id) => setActiveTab(id)} />
       </div>
 
-      {interviews.length === 0 ? (
+      {loading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <SkeletonCard height="160px" />
+          <SkeletonCard height="160px" />
+        </div>
+      ) : displayedInterviews.length === 0 ? (
         <EmptyState
           icon={Calendar}
-          title="No Scheduled Interviews"
-          description="You do not have any pending interview calls scheduled at this moment."
+          title={activeTab === 'upcoming' ? 'No Upcoming Interviews' : 'No Interview Records Found'}
+          description={
+            activeTab === 'upcoming'
+              ? 'You do not have any pending interview calls scheduled at this moment. When recruiters shortlist your profile, you will receive an alert here.'
+              : 'There are no historical interview calls recorded in your placement account.'
+          }
         />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {interviews.map((item) => {
+          {displayedInterviews.map((item) => {
             const drive = item.placementDriveId || {};
             const company = drive.companyId || {};
-            const dateStr = new Date(item.scheduledDate).toLocaleString('en-US', {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            });
+            const interviewDate = new Date(item.scheduledDate);
+            const isUpcoming = interviewDate >= now;
 
             return (
               <div
@@ -60,39 +101,97 @@ const InterviewsPage = () => {
                 className="card"
                 style={{
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: 'flex-start',
                   justifyContent: 'space-between',
                   flexWrap: 'wrap',
                   gap: '1.5rem',
-                  borderLeft: '4px solid #4f46e5',
+                  padding: '1.5rem',
+                  borderLeft: isUpcoming ? '4px solid var(--primary)' : '4px solid var(--border-default)',
+                  boxShadow: isUpcoming ? 'var(--shadow-md)' : 'var(--shadow-sm)',
                 }}
               >
-                <div>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#4f46e5', fontWeight: 700, fontSize: '0.82rem', textTransform: 'uppercase' }}>
-                    <Building2 size={15} /> {company.name || 'Company'}
+                <div style={{ flex: '1 1 340px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap', marginBottom: '0.35rem' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: 'var(--primary)', fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      <Building2 size={14} /> {company.name || 'Enterprise Partner'}
+                    </div>
+                    <span
+                      style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 'var(--font-weight-bold)',
+                        backgroundColor: 'var(--primary-light)',
+                        color: 'var(--primary)',
+                        padding: '0.1rem 0.5rem',
+                        borderRadius: 'var(--radius-full)',
+                      }}
+                    >
+                      Round {item.roundNumber}
+                    </span>
+                    {isUpcoming && (
+                      <span className="badge badge-ongoing">
+                        Scheduled
+                      </span>
+                    )}
                   </div>
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', margin: '0.2rem 0' }}>
-                    Round {item.roundNumber}: {item.roundName}
+
+                  <h3
+                    style={{
+                      fontSize: 'var(--text-lg)',
+                      fontWeight: 'var(--font-weight-extrabold)',
+                      color: 'var(--text-primary)',
+                      margin: '0.15rem 0',
+                    }}
+                  >
+                    {item.roundName || 'Technical Interview Session'}
                   </h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#64748b', fontSize: '0.88rem' }}>
-                    <Clock size={15} /> {dateStr}
+
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+                    {drive.jobRole}
                   </div>
+
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      color: 'var(--text-primary)',
+                      fontSize: 'var(--text-sm)',
+                      fontWeight: 'var(--font-weight-semibold)',
+                      backgroundColor: 'var(--bg-surface-subtle)',
+                      padding: '0.5rem 0.85rem',
+                      borderRadius: 'var(--radius-sm)',
+                    }}
+                  >
+                    <Clock size={16} style={{ color: 'var(--primary)' }} />
+                    <span>{formatDateTime(item.scheduledDate)}</span>
+                  </div>
+
                   {item.instructions && (
-                    <div style={{ marginTop: '0.6rem', padding: '0.5rem 0.75rem', backgroundColor: '#f8fafc', borderRadius: '6px', fontSize: '0.82rem', color: '#475569' }}>
-                      <strong>Instructions:</strong> {item.instructions}
+                    <div
+                      style={{
+                        marginTop: '1rem',
+                        padding: '0.75rem 1rem',
+                        backgroundColor: 'var(--bg-surface-subtle)',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: 'var(--text-xs)',
+                        color: 'var(--text-secondary)',
+                        border: '1px solid var(--border-default)',
+                      }}
+                    >
+                      <strong style={{ color: 'var(--text-primary)' }}>Instructions from Recruiter:</strong> {item.instructions}
                     </div>
                   )}
                 </div>
 
-                <div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
                   <a
                     href={item.locationOrMeetingLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btn btn-primary"
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
                   >
-                    <Video size={17} /> Join Meeting Room
+                    <Video size={16} /> Join Virtual Meeting
                   </a>
                 </div>
               </div>

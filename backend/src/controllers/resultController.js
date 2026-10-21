@@ -99,7 +99,87 @@ const getResults = async (req, res, next) => {
   }
 };
 
+/**
+ * Get college-specific placement records & real-time selected statistics
+ * GET /api/v1/results/college-records
+ */
+const getCollegePlacementRecords = async (req, res, next) => {
+  try {
+    let targetCollege = req.query.collegeName;
+
+    // If not specified in query, determine based on authenticated user
+    if (!targetCollege) {
+      if (req.user.role === 'student') {
+        const profile = await StudentProfile.findOne({ userId: req.user._id });
+        targetCollege = profile?.collegeName || req.user.collegeName;
+      } else {
+        targetCollege = req.user.collegeName;
+      }
+    }
+
+    if (!targetCollege) {
+      targetCollege = 'COEP Technological University';
+    }
+
+    // Fetch all students belonging to this college
+    const allStudents = await StudentProfile.find();
+    const collegeStudents = allStudents.filter(
+      (s) => (s.collegeName || 'COEP Technological University').trim().toLowerCase() === targetCollege.trim().toLowerCase()
+    );
+    const collegeStudentIds = new Set(collegeStudents.map((s) => s._id.toString()));
+
+    // Fetch all placement results
+    const results = await PlacementResult.find()
+      .populate('placementDriveId', 'title jobRole salaryPackage driveDate')
+      .populate('companyId', 'name logoUrl industry')
+      .populate('studentId', 'collegeId firstName lastName department graduationYear cgpa phone collegeName')
+      .sort({ selectionDate: -1 });
+
+    // Filter results for students belonging to this college
+    const filteredResults = results.filter((r) => {
+      if (!r.studentId) return false;
+      const studentObj = r.studentId;
+      const studCollege = (studentObj.collegeName || 'COEP Technological University').trim().toLowerCase();
+      const studIdStr = (studentObj._id || studentObj).toString();
+      return studCollege === targetCollege.trim().toLowerCase() || collegeStudentIds.has(studIdStr);
+    });
+
+    const totalPlaced = filteredResults.length;
+    let highestSalary = 0;
+    let totalSalarySum = 0;
+    const companyHiresCount = {};
+
+    filteredResults.forEach((r) => {
+      const sal = Number(r.offeredSalary) || 0;
+      if (sal > highestSalary) highestSalary = sal;
+      totalSalarySum += sal;
+      const compName = r.companyId?.name || 'Company Partner';
+      companyHiresCount[compName] = (companyHiresCount[compName] || 0) + 1;
+    });
+
+    const averageSalary = totalPlaced > 0 ? Math.round(totalSalarySum / totalPlaced) : 0;
+    const topRecruiters = Object.entries(companyHiresCount)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    return successResponse(res, 200, `Placement records for ${targetCollege} retrieved.`, {
+      collegeName: targetCollege,
+      totalStudentsEnrolled: collegeStudents.length,
+      totalPlaced,
+      placementRate: collegeStudents.length > 0 ? Number(((totalPlaced / collegeStudents.length) * 100).toFixed(1)) : 0,
+      highestSalary,
+      averageSalary,
+      topRecruiters,
+      records: filteredResults,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   publishResult,
   getResults,
+  getCollegePlacementRecords,
 };

@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import StatusBadge from '../components/StatusBadge';
-import LoadingSpinner from '../components/LoadingSpinner';
+import PageHeader from '../components/PageHeader';
+import { SkeletonCard } from '../components/LoadingSpinner';
+import { formatLPA, formatDate } from '../utils/formatters';
 import {
   ArrowLeft,
   Building2,
@@ -16,15 +19,20 @@ import {
   Send,
   AlertCircle,
   FileCheck2,
+  Layers,
+  Sparkles,
+  ShieldAlert,
+  Loader2,
 } from 'lucide-react';
 
 const DriveDetailsPage = () => {
   const { id } = useParams();
   const { user, profile } = useAuth();
+  const toast = useToast();
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
-  const [applicationSuccess, setApplicationSuccess] = useState(null);
   const [applyError, setApplyError] = useState('');
 
   useEffect(() => {
@@ -51,24 +59,54 @@ const DriveDetailsPage = () => {
     try {
       const res = await api.post('/applications', { placementDriveId: id });
       if (res.data.success) {
-        setApplicationSuccess(res.data.data);
+        toast.success(
+          'Application Submitted!',
+          `Your verified profile and cloud resume were forwarded to ${data?.drive?.companyId?.name}.`
+        );
         await fetchDriveDetails();
       }
     } catch (err) {
-      setApplyError(err.response?.data?.message || 'Application submission failed.');
+      const msg = err.response?.data?.message || 'Application submission failed.';
+      setApplyError(msg);
+      toast.error('Application Error', msg);
     } finally {
       setApplying(false);
     }
   };
 
-  if (loading) return <LoadingSpinner message="Evaluating drive eligibility..." />;
-  if (!data?.drive) return <div className="card">Placement drive details not found.</div>;
+  if (loading) {
+    return (
+      <div style={{ maxWidth: '980px', margin: '0 auto' }}>
+        <SkeletonCard height="220px" />
+        <div style={{ marginTop: '1.5rem' }}>
+          <div className="grid-cols-2">
+            <SkeletonCard height="280px" />
+            <SkeletonCard height="280px" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data?.drive) {
+    return (
+      <div className="card" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
+        <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--font-weight-bold)' }}>Placement Drive Not Found</h2>
+        <p style={{ color: 'var(--text-muted)', marginTop: '0.4rem', fontSize: 'var(--text-sm)' }}>
+          This placement drive record may have been deleted or archived by the placement office.
+        </p>
+        <Link to="/drives" className="btn btn-primary btn-sm" style={{ marginTop: '1.25rem' }}>
+          Back to Drives Catalog
+        </Link>
+      </div>
+    );
+  }
 
   const { drive, eligibility, userApplication } = data;
-  const ctcLpa = (drive.salaryPackage?.ctc / 100000).toFixed(2);
-  const baseLpa = (drive.salaryPackage?.base / 100000).toFixed(2);
+  const ctcFormatted = formatLPA(drive.salaryPackage?.ctc);
+  const baseFormatted = formatLPA(drive.salaryPackage?.base);
 
-  // Criteria evaluation checks
+  // Criteria checks for candidate breakdown
   const isCgpaMet = profile ? profile.cgpa >= drive.eligibilityCriteria.minCgpa : false;
   const isDeptMet = profile ? drive.eligibilityCriteria.allowedDepartments.includes(profile.department) : false;
   const isYearMet = profile ? profile.graduationYear === drive.eligibilityCriteria.graduationYear : false;
@@ -78,100 +116,205 @@ const DriveDetailsPage = () => {
   const canApply = user?.role === 'student' && eligibility?.isEligible && !userApplication && isDeadlineValid;
 
   return (
-    <div style={{ maxWidth: '980px', margin: '0 auto' }}>
-      <Link to="/drives" className="btn btn-secondary btn-sm" style={{ marginBottom: '1.5rem', display: 'inline-flex' }}>
-        <ArrowLeft size={16} /> Back to Drives Catalog
-      </Link>
+    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+      <PageHeader
+        title={drive.jobRole}
+        subtitle={`${drive.companyId?.name} • ${drive.title}`}
+        breadcrumbs={[
+          { label: 'Portal', to: '/dashboard' },
+          { label: 'Placement Drives', to: '/drives' },
+          { label: drive.jobRole },
+        ]}
+        badge={<StatusBadge status={drive.status} />}
+        actions={
+          <Link to="/drives" className="btn btn-secondary btn-sm">
+            <ArrowLeft size={15} /> All Drives
+          </Link>
+        }
+      />
 
-      {/* Main Drive Header Card */}
-      <div className="card" style={{ padding: '2rem', marginBottom: '2rem' }}>
+      {/* Main Dossier Header Card */}
+      <div className="card" style={{ padding: '2rem', marginBottom: '2rem', boxShadow: 'var(--shadow-md)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
           <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#4f46e5', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase' }}>
-              <Building2 size={16} /> {drive.companyId?.name}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--primary)', fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <Building2 size={16} /> {drive.companyId?.industry || 'Enterprise Partner'}
             </div>
-            <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#0f172a', margin: '0.25rem 0' }}>
-              {drive.jobRole}
-            </h1>
-            <div style={{ color: '#64748b', fontSize: '0.9rem' }}>{drive.title}</div>
-          </div>
-          <div>
-            <StatusBadge status={drive.status} />
-          </div>
-        </div>
-
-        {/* Salary & Details Bar */}
-        <div className="grid-cols-4" style={{ marginBottom: '1.5rem', backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '10px' }}>
-          <div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>ANNUAL CTC PACKAGE</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981' }}>{ctcLpa} LPA</div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Base: {baseLpa} LPA</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>JOB LOCATIONS</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e293b' }}>
-              {drive.jobLocations?.join(', ')}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>DRIVE DATE</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e293b' }}>
-              {new Date(drive.driveDate).toLocaleDateString()}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>APPLICATION DEADLINE</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: isDeadlineValid ? '#0f172a' : '#ef4444' }}>
-              {new Date(drive.applicationDeadline).toLocaleDateString()}
+            <h2 style={{ fontSize: '1.85rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', margin: '0.25rem 0' }}>
+              {drive.companyId?.name}
+            </h2>
+            <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
+              Drive Commences: {formatDate(drive.driveDate)}
             </div>
           </div>
         </div>
 
-        {/* Application Alerts */}
-        {applicationSuccess && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '1rem', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', color: '#065f46', marginBottom: '1.5rem' }}>
-            <CheckCircle2 size={20} />
-            <div>
-              <div style={{ fontWeight: 700 }}>Application Successfully Submitted!</div>
-              <div style={{ fontSize: '0.85rem' }}>Your resume and academic profile have been shared with {drive.companyId?.name}.</div>
+        {/* Remuneration & Location Metrics Grid */}
+        <div
+          className="grid-cols-4"
+          style={{
+            marginBottom: '1.75rem',
+            backgroundColor: 'var(--bg-surface-subtle)',
+            padding: '1.25rem',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border-default)',
+            gap: '1rem',
+          }}
+        >
+          <div>
+            <div style={{ fontSize: '0.72rem', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              ANNUAL CTC REMUNERATION
+            </div>
+            <div style={{ fontSize: '1.45rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--success)', marginTop: '0.15rem' }}>
+              {ctcFormatted}
+            </div>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+              Base pay: {baseFormatted}
             </div>
           </div>
-        )}
+
+          <div>
+            <div style={{ fontSize: '0.72rem', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              WORK LOCATIONS
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)', marginTop: '0.25rem' }}>
+              {drive.jobLocations?.join(', ') || 'Campus / Multiple'}
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: '0.72rem', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              MINIMUM CGPA REQUIRED
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-weight-bold)', color: 'var(--primary)', marginTop: '0.25rem' }}>
+              ≥ {drive.eligibilityCriteria.minCgpa} CGPA
+            </div>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+              Passout: {drive.eligibilityCriteria.graduationYear}
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: '0.72rem', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              APPLICATION DEADLINE
+            </div>
+            <div
+              style={{
+                fontSize: 'var(--text-sm)',
+                fontWeight: 'var(--font-weight-bold)',
+                color: isDeadlineValid ? 'var(--text-primary)' : 'var(--danger)',
+                marginTop: '0.25rem',
+              }}
+            >
+              {formatDate(drive.applicationDeadline)}
+            </div>
+            <div style={{ fontSize: 'var(--text-xs)', color: isDeadlineValid ? 'var(--text-muted)' : 'var(--danger)' }}>
+              {isDeadlineValid ? 'Active deadline' : 'Closed for applications'}
+            </div>
+          </div>
+        </div>
 
         {applyError && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#b91c1c', marginBottom: '1.5rem' }}>
-            <AlertCircle size={20} />
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.85rem 1rem',
+              backgroundColor: 'var(--danger-light)',
+              border: '1px solid var(--danger-border)',
+              borderRadius: 'var(--radius-sm)',
+              color: 'var(--danger-text)',
+              marginBottom: '1.5rem',
+              fontSize: 'var(--text-sm)',
+            }}
+          >
+            <AlertCircle size={18} />
             <span>{applyError}</span>
           </div>
         )}
 
-        {/* Application Action Button */}
+        {/* Application Action Area */}
         {user?.role === 'student' && (
           <div>
             {userApplication ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <FileCheck2 size={24} color="#16a34a" />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '1.15rem 1.35rem',
+                  backgroundColor: 'var(--success-light)',
+                  border: '1px solid var(--success-border)',
+                  borderRadius: 'var(--radius-md)',
+                  flexWrap: 'wrap',
+                  gap: '1rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                  <FileCheck2 size={24} style={{ color: 'var(--success)' }} />
                   <div>
-                    <div style={{ fontWeight: 700, color: '#166534' }}>You have applied for this position</div>
-                    <div style={{ fontSize: '0.82rem', color: '#15803d' }}>
-                      Status: <strong>{userApplication.status.toUpperCase()}</strong> (Round {userApplication.currentRound})
+                    <div style={{ fontWeight: 'var(--font-weight-bold)', color: 'var(--success-text)', fontSize: 'var(--text-sm)' }}>
+                      You have submitted your application for this position
+                    </div>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--success-text)', opacity: 0.9, marginTop: '0.15rem' }}>
+                      Current status: <strong>{userApplication.status.toUpperCase()}</strong> (Selection Round {userApplication.currentRound})
                     </div>
                   </div>
                 </div>
                 <Link to="/applications" className="btn btn-secondary btn-sm">
-                  Track Stage →
+                  Track in Applications Timeline →
                 </Link>
               </div>
             ) : canApply ? (
-              <button onClick={handleApply} disabled={applying} className="btn btn-primary" style={{ padding: '0.85rem 2rem', fontSize: '1rem' }}>
-                <Send size={18} /> {applying ? 'Submitting Application...' : 'One-Click Apply Now'}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                  <div style={{ fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)', fontSize: 'var(--text-sm)' }}>
+                    Your academic profile meets all criteria for this drive
+                  </div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
+                    Your validated S3 resume and academic records will be submitted to {drive.companyId?.name}.
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleApply}
+                  disabled={applying}
+                  className="btn btn-primary btn-lg"
+                  style={{ padding: '0.85rem 2.25rem' }}
+                >
+                  {applying ? (
+                    <>
+                      <Loader2 size={18} style={{ animation: 'spin 0.9s linear infinite' }} /> Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={18} /> One-Click Apply Now
+                    </>
+                  )}
+                </button>
+              </div>
             ) : (
-              <div style={{ padding: '1rem', backgroundColor: '#fff1f2', border: '1px solid #fecdd3', borderRadius: '8px', color: '#9f1239', fontSize: '0.9rem' }}>
-                {!isDeadlineValid
-                  ? 'Applications for this placement drive have closed.'
-                  : 'You do not meet the minimum eligibility criteria required for this placement drive.'}
+              <div
+                style={{
+                  padding: '1.15rem 1.35rem',
+                  backgroundColor: 'var(--danger-light)',
+                  border: '1px solid var(--danger-border)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--danger-text)',
+                  fontSize: 'var(--text-sm)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                }}
+              >
+                <ShieldAlert size={20} style={{ flexShrink: 0 }} />
+                <div>
+                  {!isDeadlineValid
+                    ? 'Applications for this recruitment drive have officially closed.'
+                    : 'You do not meet the minimum eligibility criteria required for this placement drive. Review the checklist below for specific reasons.'}
+                </div>
               </div>
             )}
           </div>
@@ -179,97 +322,195 @@ const DriveDetailsPage = () => {
       </div>
 
       {/* Grid: Job Description & Automated Eligibility Engine Card */}
-      <div className="grid-cols-2" style={{ alignItems: 'flex-start' }}>
-        {/* Job Description & Selection Rounds */}
+      <div className="grid-cols-2" style={{ alignItems: 'flex-start', gap: '1.75rem' }}>
+        {/* Left: Job Description & Selection Process */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div className="card">
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.75rem' }}>Job Description</h2>
-            <div style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+            <h3 style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)', marginBottom: '0.85rem' }}>
+              Job Role & Responsibilities
+            </h3>
+            <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', lineHeight: 1.65, whiteSpace: 'pre-line' }}>
               {drive.jobDescription}
             </div>
           </div>
 
           <div className="card">
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0f172a', marginBottom: '1rem' }}>Selection Process</h2>
+            <h3 style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+              <Layers size={18} style={{ color: 'var(--primary)' }} />
+              <span>Selection Rounds & Evaluation Stages</span>
+            </h3>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {drive.selectionRounds?.map((round) => (
-                <div key={round.roundNumber} style={{ padding: '0.85rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                  <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.95rem' }}>
-                    Round {round.roundNumber}: {round.roundName}
+              {drive.selectionRounds && drive.selectionRounds.length > 0 ? (
+                drive.selectionRounds.map((round) => (
+                  <div
+                    key={round.roundNumber}
+                    style={{
+                      padding: '0.85rem 1rem',
+                      border: '1px solid var(--border-default)',
+                      borderRadius: 'var(--radius-sm)',
+                      backgroundColor: 'var(--bg-surface-subtle)',
+                    }}
+                  >
+                    <div style={{ fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)', fontSize: 'var(--text-sm)' }}>
+                      Round {round.roundNumber}: {round.roundName}
+                    </div>
+                    {round.description && (
+                      <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)', marginTop: '0.25rem', lineHeight: 1.4 }}>
+                        {round.description}
+                      </div>
+                    )}
                   </div>
-                  <div style={{ color: '#64748b', fontSize: '0.85rem', marginTop: '0.2rem' }}>
-                    {round.description}
-                  </div>
+                ))
+              ) : (
+                <div style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', padding: '0.5rem 0' }}>
+                  Standard recruitment rounds (Online Screening, Technical Interview, HR Round).
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
 
-        {/* Real-Time Automated Eligibility Evaluation Card */}
-        <div className="card" style={{ border: '2px solid #e2e8f0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a' }}>Automated Eligibility Check</h2>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#4f46e5', backgroundColor: '#eef2ff', padding: '0.2rem 0.6rem', borderRadius: '999px' }}>
+        {/* Right: Automated Real-Time Eligibility Engine Card */}
+        <div className="card" style={{ border: '2px solid var(--border-default)' }}>
+          <div className="card-header">
+            <div>
+              <h3 style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)' }}>
+                Automated Eligibility Evaluation
+              </h3>
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                Evaluated in real-time by the PlaceCloud matching engine
+              </p>
+            </div>
+            <span
+              style={{
+                fontSize: '0.72rem',
+                fontWeight: 'var(--font-weight-bold)',
+                color: 'var(--primary)',
+                backgroundColor: 'var(--primary-light)',
+                padding: '0.2rem 0.6rem',
+                borderRadius: 'var(--radius-full)',
+              }}
+            >
               Cloud Engine
             </span>
           </div>
 
           {user?.role !== 'student' ? (
-            <p style={{ color: '#64748b', fontSize: '0.88rem' }}>
-              Eligibility evaluation is dynamically rendered for active student accounts.
+            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+              Eligibility evaluation is dynamically rendered for active student candidate accounts.
             </p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               {/* Criterion 1: CGPA */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', backgroundColor: isCgpaMet ? '#f0fdf4' : '#fef2f2', borderRadius: '8px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.85rem 1rem',
+                  backgroundColor: isCgpaMet ? 'var(--success-light)' : 'var(--danger-light)',
+                  border: `1px solid ${isCgpaMet ? 'var(--success-border)' : 'var(--danger-border)'}`,
+                  borderRadius: 'var(--radius-md)',
+                }}
+              >
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1e293b' }}>Cumulative CGPA</div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                    Required: ≥ {drive.eligibilityCriteria.minCgpa} • Your CGPA: {profile?.cgpa}
+                  <div style={{ fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+                    Cumulative CGPA Threshold
+                  </div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                    Required: ≥ {drive.eligibilityCriteria.minCgpa} • Your CGPA: <strong>{profile?.cgpa}</strong>
                   </div>
                 </div>
-                {isCgpaMet ? <CheckCircle2 color="#16a34a" size={20} /> : <XCircle color="#dc2626" size={20} />}
+                {isCgpaMet ? (
+                  <CheckCircle2 color="var(--success)" size={20} />
+                ) : (
+                  <XCircle color="var(--danger)" size={20} />
+                )}
               </div>
 
               {/* Criterion 2: Allowed Department */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', backgroundColor: isDeptMet ? '#f0fdf4' : '#fef2f2', borderRadius: '8px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.85rem 1rem',
+                  backgroundColor: isDeptMet ? 'var(--success-light)' : 'var(--danger-light)',
+                  border: `1px solid ${isDeptMet ? 'var(--success-border)' : 'var(--danger-border)'}`,
+                  borderRadius: 'var(--radius-md)',
+                }}
+              >
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1e293b' }}>Eligible Branch</div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                    Your Department: {profile?.department}
+                  <div style={{ fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+                    Eligible Academic Branch
+                  </div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                    Your Branch: <strong>{profile?.department}</strong>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                    Allowed: {drive.eligibilityCriteria.allowedDepartments?.join(', ')}
                   </div>
                 </div>
-                {isDeptMet ? <CheckCircle2 color="#16a34a" size={20} /> : <XCircle color="#dc2626" size={20} />}
+                {isDeptMet ? (
+                  <CheckCircle2 color="var(--success)" size={20} />
+                ) : (
+                  <XCircle color="var(--danger)" size={20} />
+                )}
               </div>
 
               {/* Criterion 3: Graduation Year */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', backgroundColor: isYearMet ? '#f0fdf4' : '#fef2f2', borderRadius: '8px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.85rem 1rem',
+                  backgroundColor: isYearMet ? 'var(--success-light)' : 'var(--danger-light)',
+                  border: `1px solid ${isYearMet ? 'var(--success-border)' : 'var(--danger-border)'}`,
+                  borderRadius: 'var(--radius-md)',
+                }}
+              >
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1e293b' }}>Passout Batch</div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                    Target Batch: {drive.eligibilityCriteria.graduationYear} • Your Batch: {profile?.graduationYear}
+                  <div style={{ fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+                    Graduation Passout Batch
+                  </div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                    Target Batch: {drive.eligibilityCriteria.graduationYear} • Your Year: <strong>{profile?.graduationYear}</strong>
                   </div>
                 </div>
-                {isYearMet ? <CheckCircle2 color="#16a34a" size={20} /> : <XCircle color="#dc2626" size={20} />}
+                {isYearMet ? (
+                  <CheckCircle2 color="var(--success)" size={20} />
+                ) : (
+                  <XCircle color="var(--danger)" size={20} />
+                )}
               </div>
 
-              {/* Criterion 4: Active Backlogs */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', backgroundColor: isBacklogMet ? '#f0fdf4' : '#fef2f2', borderRadius: '8px' }}>
+              {/* Criterion 4: Backlogs */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.85rem 1rem',
+                  backgroundColor: isBacklogMet ? 'var(--success-light)' : 'var(--danger-light)',
+                  border: `1px solid ${isBacklogMet ? 'var(--success-border)' : 'var(--danger-border)'}`,
+                  borderRadius: 'var(--radius-md)',
+                }}
+              >
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1e293b' }}>Active Backlogs</div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                    Allowed: ≤ {drive.eligibilityCriteria.maxBacklogs} • Your Backlogs: {profile?.activeBacklogs}
+                  <div style={{ fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+                    Maximum Standing Backlogs
+                  </div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                    Allowed: ≤ {drive.eligibilityCriteria.maxBacklogs} • Your Backlogs: <strong>{profile?.activeBacklogs}</strong>
                   </div>
                 </div>
-                {isBacklogMet ? <CheckCircle2 color="#16a34a" size={20} /> : <XCircle color="#dc2626" size={20} />}
-              </div>
-
-              <div style={{ padding: '0.85rem', backgroundColor: '#f8fafc', borderRadius: '8px', textAlign: 'center', fontWeight: 700, fontSize: '0.9rem' }}>
-                Overall Verdict:{' '}
-                <span style={{ color: eligibility?.isEligible ? '#16a34a' : '#dc2626' }}>
-                  {eligibility?.isEligible ? 'CONFIRMED ELIGIBLE TO APPLY' : 'CURRENTLY NOT ELIGIBLE'}
-                </span>
+                {isBacklogMet ? (
+                  <CheckCircle2 color="var(--success)" size={20} />
+                ) : (
+                  <XCircle color="var(--danger)" size={20} />
+                )}
               </div>
             </div>
           )}

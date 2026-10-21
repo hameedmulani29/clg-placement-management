@@ -1,42 +1,21 @@
-const mongoose = require('mongoose');
+const { BaseModel, registerModel } = require('./BaseModel');
+const MongoAuditLog = require('./mongoose/AuditLog');
+const { createModelBridge } = require('./modelBridge');
 
-const auditLogSchema = new mongoose.Schema(
-  {
-    action: {
-      type: String,
-      required: [true, 'Audit action is required'],
-      trim: true,
-      index: true,
-    },
-    performedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: [true, 'Performing user is required'],
-      index: true,
-    },
-    targetEntity: {
-      type: String,
-      required: [true, 'Target entity name is required'],
-      index: true,
-    },
-    targetEntityId: {
-      type: mongoose.Schema.Types.ObjectId,
-      default: null,
-    },
-    changes: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {},
-    },
-    ipAddress: {
-      type: String,
-      default: '',
-    },
-  },
-  {
-    timestamps: { createdAt: true, updatedAt: false },
+class AuditLog extends BaseModel {
+  static tableName = 'audit_logs';
+  static jsonFields = ['changes'];
+  static relations = {
+    performedBy: 'User',
+  };
+
+  constructor(data = {}) {
+    super(data);
+    if (!this.changes) this.changes = {};
+    if (this.ipAddress === undefined) this.ipAddress = '';
   }
-);
+}
 
-const AuditLog = mongoose.model('AuditLog', auditLogSchema);
+registerModel('AuditLog', AuditLog);
 
-module.exports = AuditLog;
+module.exports = createModelBridge(AuditLog, MongoAuditLog);

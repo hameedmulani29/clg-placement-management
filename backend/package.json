@@ -7,12 +7,14 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "seed": "node scripts/seed.js",
+    "setup:mongo": "node scripts/setup-mongodb.js",
+    "seed:mongo": "node scripts/setup-mongodb.js",
     "test": "jest --runInBand --detectOpenHandles"
   },
   "keywords": [
     "cloud",
     "placement",
-    "mongodb",
+    "sqlite",
     "aws",
     "express",
     "jwt",
@@ -30,9 +32,10 @@
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.12.1",
+    "mongoose": "^9.11.2",
     "morgan": "^1.10.0",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "sqlite3": "^6.0.1"
   },
   "devDependencies": {
     "jest": "^29.7.0",

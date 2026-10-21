@@ -26,7 +26,7 @@ const checkEligibility = (studentProfile, placementDrive) => {
     };
   }
 
-  const { eligibilityCriteria, applicationDeadline, status } = placementDrive;
+  const { eligibilityCriteria = {}, collegeSpecificCriteria = [], applicationDeadline, status } = placementDrive;
 
   // 1. Placement Drive status check
   if (status !== 'upcoming' && status !== 'ongoing') {
@@ -44,21 +44,34 @@ const checkEligibility = (studentProfile, placementDrive) => {
     );
   }
 
+  // Determine criteria: College-specific override or general drive criteria
+  const studentCollege = (studentProfile.collegeName || 'COEP Technological University').trim().toLowerCase();
+  const collegeRule = Array.isArray(collegeSpecificCriteria)
+    ? collegeSpecificCriteria.find((c) => (c.collegeName || '').trim().toLowerCase() === studentCollege)
+    : null;
+
+  const effectiveMinCgpa = collegeRule && collegeRule.minCgpa !== undefined ? collegeRule.minCgpa : eligibilityCriteria.minCgpa;
+  const effectiveMaxBacklogs = collegeRule && collegeRule.maxBacklogs !== undefined ? collegeRule.maxBacklogs : eligibilityCriteria.maxBacklogs;
+  const effectiveAllowedDepts = collegeRule && Array.isArray(collegeRule.allowedDepartments) && collegeRule.allowedDepartments.length > 0
+    ? collegeRule.allowedDepartments
+    : eligibilityCriteria.allowedDepartments;
+
   // 3. Minimum CGPA threshold check
-  if (eligibilityCriteria.minCgpa !== undefined && studentProfile.cgpa < eligibilityCriteria.minCgpa) {
+  if (effectiveMinCgpa !== undefined && studentProfile.cgpa < effectiveMinCgpa) {
+    const contextStr = collegeRule ? ` (Custom criteria for ${studentProfile.collegeName || 'your college'})` : '';
     reasons.push(
-      `CGPA requirement not met: Minimum required is ${eligibilityCriteria.minCgpa}, but your CGPA is ${studentProfile.cgpa}.`
+      `CGPA requirement not met: Minimum required is ${effectiveMinCgpa}${contextStr}, but your verified CGPA is ${studentProfile.cgpa}.`
     );
   }
 
   // 4. Department / Branch restriction check
   if (
-    Array.isArray(eligibilityCriteria.allowedDepartments) &&
-    eligibilityCriteria.allowedDepartments.length > 0 &&
-    !eligibilityCriteria.allowedDepartments.includes(studentProfile.department)
+    Array.isArray(effectiveAllowedDepts) &&
+    effectiveAllowedDepts.length > 0 &&
+    !effectiveAllowedDepts.includes(studentProfile.department)
   ) {
     reasons.push(
-      `Department '${studentProfile.department}' is not eligible. Eligible departments: [${eligibilityCriteria.allowedDepartments.join(
+      `Department '${studentProfile.department}' is not eligible. Eligible departments: [${effectiveAllowedDepts.join(
         ', '
       )}].`
     );
@@ -76,11 +89,11 @@ const checkEligibility = (studentProfile, placementDrive) => {
 
   // 6. Active backlogs threshold check
   if (
-    eligibilityCriteria.maxBacklogs !== undefined &&
-    studentProfile.activeBacklogs > eligibilityCriteria.maxBacklogs
+    effectiveMaxBacklogs !== undefined &&
+    studentProfile.activeBacklogs > effectiveMaxBacklogs
   ) {
     reasons.push(
-      `Active backlog threshold exceeded: Maximum allowed is ${eligibilityCriteria.maxBacklogs}, but you currently have ${studentProfile.activeBacklogs}.`
+      `Active backlog threshold exceeded: Maximum allowed is ${effectiveMaxBacklogs}, but you currently have ${studentProfile.activeBacklogs}.`
     );
   }
 

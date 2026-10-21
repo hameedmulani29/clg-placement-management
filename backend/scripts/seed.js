@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const { connectDB, disconnectDB } = require('../src/config/db');
 require('dotenv').config();
 
 const User = require('../src/models/User');
@@ -13,12 +13,11 @@ const Notification = require('../src/models/Notification');
 const AuditLog = require('../src/models/AuditLog');
 
 const seedData = async () => {
-  const mongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/placement_db';
-  console.log(`[Seed Script] Connecting to MongoDB: ${mongoURI}`);
+  console.log('[Seed Script] Initializing SQLite database...');
 
   try {
-    await mongoose.connect(mongoURI);
-    console.log('[Seed Script] Connected. Clearing existing collections...');
+    await connectDB();
+    console.log('[Seed Script] Connected. Clearing existing SQLite tables...');
 
     await Promise.all([
       User.deleteMany({}),
@@ -493,6 +492,7 @@ const seedData = async () => {
     console.log('Email: priya.nair@college.edu | Password: StudentPassword123!\n');
     console.log('===========================================================');
 
+    await disconnectDB();
     process.exit(0);
   } catch (error) {
     console.error(`[Seed Script Error]: ${error.message}`);

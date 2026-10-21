@@ -17,6 +17,7 @@ const registerStudent = async (req, res, next) => {
       firstName,
       lastName,
       collegeId,
+      collegeName,
       department,
       graduationYear,
       cgpa,
@@ -42,11 +43,14 @@ const registerStudent = async (req, res, next) => {
       return errorResponse(res, 409, `Student with College ID '${collegeId}' is already registered.`);
     }
 
+    const assignedCollege = collegeName ? collegeName.trim() : 'COEP Technological University';
+
     // 1. Create User document
     const user = new User({
       email,
       password,
       role: 'student',
+      collegeName: assignedCollege,
     });
     await user.save();
 
@@ -54,6 +58,7 @@ const registerStudent = async (req, res, next) => {
     const profile = new StudentProfile({
       userId: user._id,
       collegeId: collegeId.toUpperCase(),
+      collegeName: assignedCollege,
       firstName,
       lastName,
       department,
@@ -191,6 +196,7 @@ const login = async (req, res, next) => {
         _id: user._id,
         email: user.email,
         role: user.role,
+        collegeName: user.collegeName || profile?.collegeName || 'COEP Technological University',
         isActive: user.isActive,
         createdAt: user.createdAt,
       },
@@ -221,6 +227,7 @@ const getMe = async (req, res, next) => {
         _id: user._id,
         email: user.email,
         role: user.role,
+        collegeName: user.collegeName || profile?.collegeName || 'COEP Technological University',
         isActive: user.isActive,
         createdAt: user.createdAt,
       },

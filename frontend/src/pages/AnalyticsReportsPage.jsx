@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import LoadingSpinner from '../components/LoadingSpinner';
+import PageHeader from '../components/PageHeader';
+import StatCard from '../components/StatCard';
+import { SkeletonStatGrid, SkeletonCard } from '../components/LoadingSpinner';
+import { useTheme } from '../context/ThemeContext';
+import { formatLPA } from '../utils/formatters';
 import {
   BarChart,
   Bar,
@@ -11,13 +15,29 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Download, BarChart3, TrendingUp, Award, Building2 } from 'lucide-react';
+import {
+  Download,
+  BarChart3,
+  TrendingUp,
+  Award,
+  Building2,
+  Users,
+  Calendar,
+  Filter,
+  FileSpreadsheet,
+} from 'lucide-react';
 
 const AnalyticsReportsPage = () => {
+  const { resolvedTheme } = useTheme();
+
   const [summary, setSummary] = useState(null);
   const [deptData, setDeptData] = useState([]);
   const [companyData, setCompanyData] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // CSV Export Filter State
+  const [exportDept, setExportDept] = useState('');
+  const [exportBatch, setExportBatch] = useState('');
 
   useEffect(() => {
     fetchAnalytics();
@@ -43,15 +63,50 @@ const AnalyticsReportsPage = () => {
 
   const handleDownloadCSV = () => {
     const token = localStorage.getItem('token');
-    const baseUrl = import.meta.env.VITE_API_BASE_URL ? `${import.meta.env.VITE_API_BASE_URL}/api/v1` : '/api/v1';
-    window.open(`${baseUrl}/reports/export-csv?token=${token}`, '_blank');
+    const cleanBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+    const baseUrl = cleanBase ? `${cleanBase}/api/v1` : '/api/v1';
+    const params = new URLSearchParams();
+    if (token) params.append('token', token);
+    if (exportDept) params.append('department', exportDept);
+    if (exportBatch) params.append('graduationYear', exportBatch);
+
+    window.open(`${baseUrl}/reports/export-csv?${params.toString()}`, '_blank');
   };
 
-  if (loading) return <LoadingSpinner message="Rendering institutional placement charts..." />;
+  // Theme-adaptive colors for Recharts
+  const isDark = resolvedTheme === 'dark';
+  const gridStroke = isDark ? '#26334a' : '#e2e8f0';
+  const textFill = isDark ? '#94a3b8' : '#64748b';
+  const totalBarFill = isDark ? '#1e293b' : '#cbd5e1';
+  const placedBarFill = isDark ? '#6366f1' : '#4f46e5';
+  const hireBarFill = isDark ? '#10b981' : '#059669';
+  const tooltipBg = isDark ? '#111827' : '#ffffff';
+  const tooltipBorder = isDark ? '#334155' : '#e2e8f0';
+  const tooltipText = isDark ? '#f8fafc' : '#0f172a';
+
+  if (loading) {
+    return (
+      <div>
+        <div style={{ marginBottom: '2rem' }}>
+          <div className="skeleton" style={{ width: '45%', height: '2rem', marginBottom: '0.5rem' }} />
+          <div className="skeleton" style={{ width: '65%', height: '1rem' }} />
+        </div>
+        <SkeletonStatGrid count={4} />
+        <div style={{ marginBottom: '2rem' }}>
+          <SkeletonCard height="360px" />
+        </div>
+        <SkeletonCard height="340px" />
+      </div>
+    );
+  }
 
   // Transform department names for clean chart axis
   const formattedDeptData = deptData.map((d) => ({
-    name: d.department.replace('Engineering', 'Eng.').replace('Computer Science', 'CSE').replace('Information Technology', 'IT').replace('Electronics & Communication', 'ECE'),
+    name: d.department
+      .replace('Engineering', 'Eng.')
+      .replace('Computer Science', 'CSE')
+      .replace('Information Technology', 'IT')
+      .replace('Electronics & Communication', 'ECE'),
     Total: d.totalStudents,
     Placed: d.placedStudents,
     Percentage: d.placementPercentage,
@@ -65,88 +120,199 @@ const AnalyticsReportsPage = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a' }}>Placement Analytics & Accreditation Reports</h1>
-          <p style={{ color: '#64748b', fontSize: '0.92rem' }}>Comprehensive real-time charts compliant with NAAC / NBA audit criteria</p>
+      <PageHeader
+        title="Institutional Placement Analytics & Accreditation"
+        subtitle="Real-time cohort visualizations and one-click NAAC / NBA compliance CSV reports"
+        breadcrumbs={[
+          { label: 'Admin' },
+          { label: 'Analytics & Reports' },
+        ]}
+      />
+
+      {/* CSV Export Bar Card */}
+      <div
+        className="card"
+        style={{
+          padding: '1.25rem 1.5rem',
+          marginBottom: '2rem',
+          backgroundColor: 'var(--bg-surface-elevated)',
+          border: '1px solid var(--border-default)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <div
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'var(--success-light)',
+                color: 'var(--success)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <FileSpreadsheet size={20} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+                NAAC / NBA Institutional Placement Report (CSV Stream)
+              </div>
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                Filter by academic department or graduation year for customized compliance reporting
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+            <select
+              value={exportDept}
+              onChange={(e) => setExportDept(e.target.value)}
+              style={{ fontSize: 'var(--text-xs)', padding: '0.45rem 1.8rem 0.45rem 0.75rem', width: 'auto' }}
+              aria-label="Filter export by branch"
+            >
+              <option value="">All Academic Branches</option>
+              <option value="Computer Science">Computer Science</option>
+              <option value="Information Technology">Information Technology</option>
+              <option value="Electronics & Communication">Electronics & Communication</option>
+              <option value="Electrical Engineering">Electrical Engineering</option>
+              <option value="Mechanical Engineering">Mechanical Engineering</option>
+              <option value="Civil Engineering">Civil Engineering</option>
+            </select>
+
+            <select
+              value={exportBatch}
+              onChange={(e) => setExportBatch(e.target.value)}
+              style={{ fontSize: 'var(--text-xs)', padding: '0.45rem 1.8rem 0.45rem 0.75rem', width: 'auto' }}
+              aria-label="Filter export by passout year"
+            >
+              <option value="">All Batch Years</option>
+              <option value="2025">Batch 2025</option>
+              <option value="2026">Batch 2026</option>
+              <option value="2027">Batch 2027</option>
+            </select>
+
+            <button
+              type="button"
+              onClick={handleDownloadCSV}
+              className="btn btn-primary btn-sm"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              <Download size={14} /> Download CSV
+            </button>
+          </div>
         </div>
-        <button onClick={handleDownloadCSV} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <Download size={16} /> Download Full Placement Report (CSV)
-        </button>
       </div>
 
-      {/* KPI Highlights */}
+      {/* KPI Highlights Grid */}
       <div className="grid-cols-4" style={{ marginBottom: '2rem' }}>
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>TOTAL REGISTERED STUDENTS</div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#0f172a', margin: '0.2rem 0' }}>{summary?.totalStudents || 0}</div>
-          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Verified student database</div>
-        </div>
-
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>UNIQUE CANDIDATES PLACED</div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#10b981', margin: '0.2rem 0' }}>{summary?.totalSelectedStudents || 0}</div>
-          <div style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 600 }}>Unique individual offers</div>
-        </div>
-
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>OVERALL PLACEMENT RATE</div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#4f46e5', margin: '0.2rem 0' }}>{summary?.placementRate || 0}%</div>
-          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>True institutional cohort rate</div>
-        </div>
-
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>MAX CTC PACKAGE</div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#d97706', margin: '0.2rem 0' }}>
-            {summary?.salaryStatistics?.highestSalary ? (summary.salaryStatistics.highestSalary / 100000).toFixed(1) : 0} LPA
-          </div>
-          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Annual remuneration</div>
-        </div>
+        <StatCard
+          title="Total Registered Students"
+          value={summary?.totalStudents || 0}
+          subtitle="Active candidate pool"
+          icon={Users}
+          color="var(--primary)"
+          bgColor="var(--primary-light)"
+        />
+        <StatCard
+          title="Placed Candidates"
+          value={summary?.totalSelectedStudents || 0}
+          subtitle="Confirmed offers issued"
+          icon={Award}
+          color="var(--success)"
+          bgColor="var(--success-light)"
+        />
+        <StatCard
+          title="Placement Rate"
+          value={`${summary?.placementRate || 0}%`}
+          subtitle="Overall cohort velocity"
+          icon={TrendingUp}
+          color="var(--color-accent-600)"
+          bgColor="var(--color-accent-50)"
+          trend={{ label: `${summary?.placementRate || 0}%`, positive: true }}
+        />
+        <StatCard
+          title="Max Remuneration"
+          value={summary?.salaryStatistics?.highestSalary ? formatLPA(summary.salaryStatistics.highestSalary) : '0.0 LPA'}
+          subtitle="Annual package CTC"
+          icon={Building2}
+          color="var(--warning)"
+          bgColor="var(--warning-light)"
+        />
       </div>
 
       {/* Chart 1: Department Placed vs Total Students */}
-      <div className="card" style={{ marginBottom: '2rem', padding: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <BarChart3 size={20} color="#4f46e5" /> Department-Wise Student Placements (Total vs Placed)
-        </h2>
-        <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-          Direct comparison of eligible registered student volume versus confirmed offers per academic discipline.
-        </p>
+      <div className="card" style={{ marginBottom: '2rem', padding: '1.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div>
+            <h2 style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <BarChart3 size={19} style={{ color: 'var(--primary)' }} />
+              <span>Department-Wise Placement Distribution (Total vs Placed)</span>
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)', marginTop: '0.2rem' }}>
+              Direct comparison of registered students versus candidates with confirmed job offers per engineering department
+            </p>
+          </div>
+        </div>
 
-        <div style={{ height: '340px', width: '100%' }}>
+        <div style={{ height: '360px', width: '100%' }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={formattedDeptData} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
-              <YAxis stroke="#64748b" fontSize={12} allowDecimals={false} />
-              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
-              <Legend verticalAlign="top" height={36} />
-              <Bar dataKey="Total" fill="#cbd5e1" radius={[4, 4, 0, 0]} name="Total Registered" />
-              <Bar dataKey="Placed" fill="#4f46e5" radius={[4, 4, 0, 0]} name="Successfully Placed" />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+              <XAxis dataKey="name" stroke={textFill} fontSize={12} tickLine={false} />
+              <YAxis stroke={textFill} fontSize={12} allowDecimals={false} tickLine={false} axisLine={false} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: tooltipBg,
+                  borderColor: tooltipBorder,
+                  borderRadius: '8px',
+                  color: tooltipText,
+                  boxShadow: 'var(--shadow-lg)',
+                  fontSize: '0.8rem',
+                }}
+              />
+              <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '0.8rem' }} />
+              <Bar dataKey="Total" fill={totalBarFill} radius={[4, 4, 0, 0]} name="Total Registered" />
+              <Bar dataKey="Placed" fill={placedBarFill} radius={[4, 4, 0, 0]} name="Successfully Placed" />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Chart 2: Company Recruitment Distribution */}
-      <div className="card" style={{ padding: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Building2 size={20} color="#10b981" /> Corporate Partner Hiring Volume & Average CTC
-        </h2>
-        <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-          Aggregate candidate intake and average package offered across recruiting partners.
-        </p>
+      {/* Chart 2: Corporate Partner Hiring Intake & Remuneration */}
+      <div className="card" style={{ padding: '1.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div>
+            <h2 style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Building2 size={19} style={{ color: 'var(--success)' }} />
+              <span>Enterprise Partner Intake & Average Package (LPA)</span>
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)', marginTop: '0.2rem' }}>
+              Total candidate selections and average remuneration package per corporate recruiting organization
+            </p>
+          </div>
+        </div>
 
-        <div style={{ height: '320px', width: '100%' }}>
+        <div style={{ height: '340px', width: '100%' }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={formattedCompanyData} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
-              <YAxis stroke="#64748b" fontSize={12} allowDecimals={false} />
-              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
-              <Legend verticalAlign="top" height={36} />
-              <Bar dataKey="Hires" fill="#10b981" radius={[4, 4, 0, 0]} name="Total Offers" />
-              <Bar dataKey="AverageLPA" fill="#0ea5e9" radius={[4, 4, 0, 0]} name="Average Package (LPA)" />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+              <XAxis dataKey="name" stroke={textFill} fontSize={12} tickLine={false} />
+              <YAxis stroke={textFill} fontSize={12} allowDecimals={false} tickLine={false} axisLine={false} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: tooltipBg,
+                  borderColor: tooltipBorder,
+                  borderRadius: '8px',
+                  color: tooltipText,
+                  boxShadow: 'var(--shadow-lg)',
+                  fontSize: '0.8rem',
+                }}
+              />
+              <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '0.8rem' }} />
+              <Bar dataKey="Hires" fill={hireBarFill} radius={[4, 4, 0, 0]} name="Candidate Hires" />
             </BarChart>
           </ResponsiveContainer>
         </div>

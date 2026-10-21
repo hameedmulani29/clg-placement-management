@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import api from '../services/api';
 import StatCard from '../components/StatCard';
 import StatusBadge from '../components/StatusBadge';
-import LoadingSpinner from '../components/LoadingSpinner';
+import PageHeader from '../components/PageHeader';
+import { SkeletonStatGrid, SkeletonCard, SkeletonTable } from '../components/LoadingSpinner';
+import { formatLPA, formatDate } from '../utils/formatters';
 import {
   Users,
   Building2,
@@ -15,22 +17,54 @@ import {
   Plus,
   ArrowRight,
   DollarSign,
+  Shield,
+  Layers,
+  Sparkles,
+  RefreshCw,
+  Search,
+  CheckCircle2,
 } from 'lucide-react';
 
 const AdminDashboard = () => {
   const [summary, setSummary] = useState(null);
   const [recentApplications, setRecentApplications] = useState([]);
+  const [collegeRecords, setCollegeRecords] = useState(null);
+  const [selectedSearch, setSelectedSearch] = useState('');
+  const [recordsRefreshing, setRecordsRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchAdminDashboard();
+
+    // Real-time polling for latest confirmed candidate offers (every 15 seconds)
+    const interval = setInterval(() => {
+      fetchCollegeRecordsOnly();
+    }, 15000);
+
+    return () => clearInterval(interval);
   }, []);
+
+  const fetchCollegeRecordsOnly = async () => {
+    try {
+      const res = await api.get('/results/college-records');
+      if (res.data.success) {
+        setCollegeRecords(res.data.data);
+      }
+    } catch (_) {}
+  };
+
+  const handleManualRefresh = async () => {
+    setRecordsRefreshing(true);
+    await fetchCollegeRecordsOnly();
+    setTimeout(() => setRecordsRefreshing(false), 400);
+  };
 
   const fetchAdminDashboard = async () => {
     try {
-      const [sumRes, appsRes] = await Promise.all([
+      const [sumRes, appsRes, recordsRes] = await Promise.all([
         api.get('/analytics/admin-summary'),
-        api.get('/applications?limit=6'),
+        api.get('/applications?limit=8'),
+        api.get('/results/college-records'),
       ]);
 
       if (sumRes.data.success) {
@@ -38,6 +72,9 @@ const AdminDashboard = () => {
       }
       if (appsRes.data.success) {
         setRecentApplications(appsRes.data.data || []);
+      }
+      if (recordsRes.data.success) {
+        setCollegeRecords(recordsRes.data.data);
       }
     } catch (err) {
       console.error('Failed to load admin dashboard:', err);
@@ -48,128 +85,233 @@ const AdminDashboard = () => {
 
   const handleExportCSV = () => {
     const token = localStorage.getItem('token');
-    const baseUrl = import.meta.env.VITE_API_BASE_URL ? `${import.meta.env.VITE_API_BASE_URL}/api/v1` : '/api/v1';
+    const cleanBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+    const baseUrl = cleanBase ? `${cleanBase}/api/v1` : '/api/v1';
     window.open(`${baseUrl}/reports/export-csv?token=${token}`, '_blank');
   };
 
-  if (loading) return <LoadingSpinner message="Calculating institutional placement analytics..." />;
+  if (loading) {
+    return (
+      <div>
+        <div style={{ marginBottom: '2rem' }}>
+          <div className="skeleton" style={{ width: '45%', height: '2rem', marginBottom: '0.5rem' }} />
+          <div className="skeleton" style={{ width: '65%', height: '1rem' }} />
+        </div>
+        <SkeletonStatGrid count={4} />
+        <div className="grid-cols-2" style={{ marginBottom: '2rem' }}>
+          <SkeletonCard height="180px" />
+          <SkeletonCard height="180px" />
+        </div>
+        <SkeletonTable rows={5} cols={6} />
+      </div>
+    );
+  }
 
-  const avgSalaryLpa = summary?.salaryStatistics?.averageSalary
-    ? (summary.salaryStatistics.averageSalary / 100000).toFixed(2)
-    : '0.00';
-  const maxSalaryLpa = summary?.salaryStatistics?.highestSalary
-    ? (summary.salaryStatistics.highestSalary / 100000).toFixed(2)
-    : '0.00';
+  const avgSalaryFormatted = summary?.salaryStatistics?.averageSalary
+    ? formatLPA(summary.salaryStatistics.averageSalary)
+    : '0.0 LPA';
+  const maxSalaryFormatted = summary?.salaryStatistics?.highestSalary
+    ? formatLPA(summary.salaryStatistics.highestSalary)
+    : '0.0 LPA';
+
+  const placementPct = summary?.placementRate || 0;
 
   return (
     <div>
-      {/* Header with Quick Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a' }}>Placement Officer Command Center</h1>
-          <p style={{ color: '#64748b', fontSize: '0.92rem' }}>Campus placement progress, drive analytics, and candidate pipelines</p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button onClick={handleExportCSV} className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Download size={15} /> Export Placement CSV
-          </button>
-          <Link to="/admin/drives" className="btn btn-primary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Plus size={15} /> New Placement Drive
-          </Link>
-        </div>
-      </div>
+      {/* Page Header with Actions */}
+      <PageHeader
+        title="Placement Officer Command Center"
+        subtitle="Institutional placement velocity, drive health analytics, and candidate selection operations"
+        badge={
+          <span
+            style={{
+              fontSize: 'var(--text-xs)',
+              fontWeight: 'var(--font-weight-bold)',
+              color: 'var(--color-accent-600)',
+              backgroundColor: 'var(--color-accent-50)',
+              padding: '0.15rem 0.6rem',
+              borderRadius: 'var(--radius-full)',
+              border: '1px solid rgba(139, 92, 246, 0.3)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.3rem',
+            }}
+          >
+            <Shield size={12} /> Institutional Administration
+          </span>
+        }
+        actions={
+          <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="btn btn-secondary btn-sm"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+              title="Export complete placement cohort data to CSV"
+            >
+              <Download size={15} /> Export Placement CSV
+            </button>
+            <Link
+              to="/admin/drives"
+              className="btn btn-primary btn-sm"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              <Plus size={15} /> Create Placement Drive
+            </Link>
+          </div>
+        }
+      />
 
-      {/* KPI Cards */}
+      {/* KPI Highlights Grid */}
       <div className="grid-cols-4" style={{ marginBottom: '2rem' }}>
         <StatCard
-          title="Total Students"
+          title="Total Registered Students"
           value={summary?.totalStudents || 0}
-          subtitle="Registered candidates"
+          subtitle="Verified candidate cohort"
           icon={Users}
-          color="#4f46e5"
-          bgColor="#eef2ff"
+          color="var(--primary)"
+          bgColor="var(--primary-light)"
         />
         <StatCard
           title="Placement Drives"
           value={summary?.totalDrives || 0}
           subtitle={`${summary?.activeDrivesCount || 0} currently active`}
           icon={Briefcase}
-          color="#0ea5e9"
-          bgColor="#f0f9ff"
+          color="var(--info)"
+          bgColor="var(--info-light)"
         />
         <StatCard
           title="Partner Companies"
           value={summary?.totalCompanies || 0}
           subtitle="Active corporate recruiters"
           icon={Building2}
-          color="#8b5cf6"
-          bgColor="#f5f3ff"
+          color="var(--color-accent-600)"
+          bgColor="var(--color-accent-50)"
         />
         <StatCard
           title="Students Placed"
           value={summary?.totalSelectedStudents || 0}
-          subtitle={`${summary?.placementRate || 0}% overall placement rate`}
+          subtitle={`${placementPct}% institutional rate`}
           icon={Award}
-          color="#10b981"
-          bgColor="#ecfdf5"
+          color="var(--success)"
+          bgColor="var(--success-light)"
+          trend={{ label: `${placementPct}%`, positive: true }}
         />
       </div>
 
-      {/* Placement Rate Banner & Salary Metrics */}
-      <div className="grid-cols-2" style={{ marginBottom: '2.5rem' }}>
+      {/* Placement Rate Health & CTC Benchmarks */}
+      <div className="grid-cols-2" style={{ marginBottom: '2.5rem', gap: '1.5rem' }}>
+        {/* Placement Rate Metric Card */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-              Institutional Placement Percentage
+            <div style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Institutional Placement Cohort Velocity
             </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', margin: '0.5rem 0' }}>
-              <span style={{ fontSize: '2.5rem', fontWeight: 900, color: '#0f172a' }}>{summary?.placementRate || 0}%</span>
-              <span style={{ color: '#10b981', fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                <TrendingUp size={16} /> Verified Cohort
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.85rem', margin: '0.5rem 0' }}>
+              <span
+                style={{
+                  fontSize: '2.75rem',
+                  fontFamily: 'var(--font-family-display)',
+                  fontWeight: 'var(--font-weight-extrabold)',
+                  color: 'var(--text-primary)',
+                  lineHeight: 1,
+                }}
+              >
+                {placementPct}%
+              </span>
+              <span
+                style={{
+                  color: 'var(--success)',
+                  fontWeight: 'var(--font-weight-bold)',
+                  fontSize: 'var(--text-sm)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                }}
+              >
+                <TrendingUp size={16} /> Verified Placement Rate
               </span>
             </div>
-            <p style={{ color: '#64748b', fontSize: '0.85rem' }}>
-              Calculated dynamically as: (Unique Selected Candidates / Total Registered Student Population).
+            <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)', lineHeight: 1.5 }}>
+              Calculated dynamically over unique verified student candidates ({summary?.totalSelectedStudents || 0} placed out of {summary?.totalStudents || 0} registered).
             </p>
           </div>
 
-          <div style={{ marginTop: '1.25rem' }}>
-            <div style={{ height: '10px', backgroundColor: '#e2e8f0', borderRadius: '999px', overflow: 'hidden' }}>
+          <div style={{ marginTop: '1.5rem' }}>
+            <div
+              style={{
+                height: '10px',
+                backgroundColor: 'var(--border-default)',
+                borderRadius: 'var(--radius-full)',
+                overflow: 'hidden',
+              }}
+            >
               <div
                 style={{
                   height: '100%',
-                  width: `${Math.min(summary?.placementRate || 0, 100)}%`,
-                  backgroundColor: '#10b981',
-                  borderRadius: '999px',
-                  transition: 'width 0.8s ease',
+                  width: `${Math.min(placementPct, 100)}%`,
+                  backgroundColor: 'var(--success)',
+                  borderRadius: 'var(--radius-full)',
+                  transition: 'width 0.8s var(--ease-out)',
                 }}
               />
             </div>
           </div>
         </div>
 
-        {/* Salary CTC Distribution */}
+        {/* Salary Package Benchmarks Card */}
         <div className="card">
-          <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '1rem' }}>
-            Salary Package Benchmarks (CTC)
+          <div style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '1rem' }}>
+            Salary Remuneration Benchmarks (Annual CTC)
           </div>
+
           <div className="grid-cols-2" style={{ gap: '1rem' }}>
-            <div style={{ padding: '1rem', backgroundColor: '#f0fdf4', borderRadius: '10px' }}>
-              <div style={{ fontSize: '0.78rem', color: '#166534', fontWeight: 600 }}>HIGHEST PACKAGE</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#15803d', marginTop: '0.25rem' }}>
-                {maxSalaryLpa} LPA
+            <div
+              style={{
+                padding: '1.1rem',
+                backgroundColor: 'var(--success-light)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--success-border)',
+              }}
+            >
+              <div style={{ fontSize: '0.72rem', color: 'var(--success-text)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase' }}>
+                HIGHEST PACKAGE (LPA)
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--success-text)', marginTop: '0.2rem' }}>
+                {maxSalaryFormatted}
               </div>
             </div>
-            <div style={{ padding: '1rem', backgroundColor: '#eff6ff', borderRadius: '10px' }}>
-              <div style={{ fontSize: '0.78rem', color: '#1e40af', fontWeight: 600 }}>AVERAGE PACKAGE</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1d4ed8', marginTop: '0.25rem' }}>
-                {avgSalaryLpa} LPA
+
+            <div
+              style={{
+                padding: '1.1rem',
+                backgroundColor: 'var(--primary-light)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid rgba(99, 102, 241, 0.25)',
+              }}
+            >
+              <div style={{ fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase' }}>
+                AVERAGE PACKAGE (LPA)
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--primary)', marginTop: '0.2rem' }}>
+                {avgSalaryFormatted}
               </div>
             </div>
           </div>
-          <div style={{ marginTop: '1rem', textAlign: 'right' }}>
-            <Link to="/admin/analytics" style={{ fontSize: '0.85rem', fontWeight: 600, color: '#4f46e5', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
-              View full charts & reports <ArrowRight size={14} />
+
+          <div style={{ marginTop: '1.25rem', textAlign: 'right' }}>
+            <Link
+              to="/admin/analytics"
+              style={{
+                fontSize: 'var(--text-xs)',
+                fontWeight: 'var(--font-weight-semibold)',
+                color: 'var(--primary)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+              }}
+            >
+              View Accreditation Charts & Trends <ArrowRight size={13} />
             </Link>
           </div>
         </div>
@@ -177,26 +319,46 @@ const AdminDashboard = () => {
 
       {/* Recent Applications Feed */}
       <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-          <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a' }}>Recent Candidate Submissions</h2>
-          <Link to="/admin/drives" style={{ fontSize: '0.85rem', fontWeight: 600, color: '#4f46e5' }}>
-            Inspect drives →
+        <div className="card-header">
+          <div>
+            <h2 style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)' }}>
+              Recent Candidate Applications Stream
+            </h2>
+            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+              Real-time feed of latest student submissions across all departmental drives
+            </p>
+          </div>
+          <Link
+            to="/admin/drives"
+            style={{
+              fontSize: 'var(--text-xs)',
+              fontWeight: 'var(--font-weight-semibold)',
+              color: 'var(--primary)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+            }}
+          >
+            Manage all drives <ArrowRight size={13} />
           </Link>
         </div>
 
         {recentApplications.length === 0 ? (
-          <p style={{ color: '#64748b', textAlign: 'center', padding: '1.5rem' }}>No recent applications.</p>
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 1rem', fontSize: 'var(--text-sm)' }}>
+            No candidate applications submitted yet.
+          </p>
         ) : (
           <div className="table-container">
-            <table>
+            <table aria-label="Recent student candidate applications table">
               <thead>
                 <tr>
-                  <th>Student Candidate</th>
-                  <th>Department</th>
-                  <th>CGPA</th>
-                  <th>Applied Drive</th>
-                  <th>Company</th>
-                  <th>Status</th>
+                  <th scope="col">Student Candidate</th>
+                  <th scope="col">Roll ID</th>
+                  <th scope="col">Branch</th>
+                  <th scope="col">CGPA</th>
+                  <th scope="col">Applied Drive</th>
+                  <th scope="col">Company Partner</th>
+                  <th scope="col">Current Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -207,16 +369,20 @@ const AdminDashboard = () => {
                   return (
                     <tr key={app._id}>
                       <td>
-                        <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                        <div style={{ fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)' }}>
                           {student.firstName} {student.lastName}
                         </div>
-                        <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Roll: {student.collegeId}</div>
+                      </td>
+                      <td style={{ fontFamily: 'var(--font-family-mono)', fontSize: 'var(--text-xs)' }}>
+                        {student.collegeId}
                       </td>
                       <td>{student.department}</td>
                       <td>
-                        <strong style={{ color: '#4f46e5' }}>{student.cgpa}</strong>
+                        <strong style={{ color: 'var(--primary)' }}>{student.cgpa}</strong>
                       </td>
-                      <td>{drive.jobRole}</td>
+                      <td>
+                        <div style={{ fontWeight: 'var(--font-weight-semibold)' }}>{drive.jobRole}</div>
+                      </td>
                       <td>{company.name}</td>
                       <td>
                         <StatusBadge status={app.status} />
@@ -224,6 +390,136 @@ const AdminDashboard = () => {
                     </tr>
                   );
                 })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Real-time Selected Candidates Stream (College Level) */}
+      <div className="card" style={{ marginTop: '2rem' }}>
+        <div className="card-header" style={{ flexWrap: 'wrap', gap: '0.85rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.2rem' }}>
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: 'var(--radius-full)',
+                  backgroundColor: 'var(--success)',
+                  boxShadow: '0 0 0 3px var(--success-light)',
+                  display: 'inline-block',
+                }}
+              />
+              <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-bold)', color: 'var(--success)', textTransform: 'uppercase' }}>
+                Live Stream • {collegeRecords?.collegeName || 'COEP Technological University'}
+              </span>
+            </div>
+            <h2 style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)' }}>
+              Real-Time Selected Candidates & Confirmed Offers
+            </h2>
+            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+              Live stream of verified student offers ({collegeRecords?.records?.length || 0} placed candidates)
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', width: '220px' }}>
+              <input
+                type="text"
+                placeholder="Search selected student..."
+                value={selectedSearch}
+                onChange={(e) => setSelectedSearch(e.target.value)}
+                style={{ paddingLeft: '2.2rem', fontSize: 'var(--text-xs)', paddingRight: '0.6rem' }}
+                aria-label="Search selected candidates"
+              />
+              <Search size={13} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleManualRefresh}
+              disabled={recordsRefreshing}
+              className="btn btn-secondary btn-xs"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+            >
+              <RefreshCw size={13} className={recordsRefreshing ? 'spin' : ''} />
+              {recordsRefreshing ? 'Syncing...' : 'Sync Live Offers'}
+            </button>
+          </div>
+        </div>
+
+        {(!collegeRecords?.records || collegeRecords.records.length === 0) ? (
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 1rem', fontSize: 'var(--text-sm)' }}>
+            No confirmed student placements recorded for this college yet.
+          </p>
+        ) : (
+          <div className="table-container">
+            <table aria-label="Real-time placed students table">
+              <thead>
+                <tr>
+                  <th scope="col">Student Candidate</th>
+                  <th scope="col">Roll ID</th>
+                  <th scope="col">Department</th>
+                  <th scope="col">Hiring Company</th>
+                  <th scope="col">Position / Role</th>
+                  <th scope="col">Remuneration Package</th>
+                  <th scope="col">Selection Date</th>
+                  <th scope="col">Offer Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {collegeRecords.records
+                  .filter((r) => {
+                    const student = r.studentId || {};
+                    const drive = r.placementDriveId || {};
+                    const company = r.companyId || {};
+                    const q = selectedSearch.trim().toLowerCase();
+                    if (!q) return true;
+                    return (
+                      `${student.firstName || ''} ${student.lastName || ''}`.toLowerCase().includes(q) ||
+                      (student.collegeId || '').toLowerCase().includes(q) ||
+                      (company.name || '').toLowerCase().includes(q) ||
+                      (drive.jobRole || '').toLowerCase().includes(q)
+                    );
+                  })
+                  .map((r) => {
+                    const student = r.studentId || {};
+                    const drive = r.placementDriveId || {};
+                    const company = r.companyId || {};
+                    return (
+                      <tr key={r._id}>
+                        <td>
+                          <div style={{ fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)' }}>
+                            {student.firstName} {student.lastName}
+                          </div>
+                        </td>
+                        <td style={{ fontFamily: 'var(--font-family-mono)', fontSize: 'var(--text-xs)' }}>
+                          {student.collegeId || 'N/A'}
+                        </td>
+                        <td>{student.department}</td>
+                        <td>
+                          <div style={{ fontWeight: 'var(--font-weight-semibold)', color: 'var(--primary)' }}>
+                            {company.name}
+                          </div>
+                        </td>
+                        <td>{drive.jobRole || r.designation}</td>
+                        <td>
+                          <strong style={{ color: 'var(--success)' }}>
+                            {formatLPA(r.offeredSalary)}
+                          </strong>
+                        </td>
+                        <td style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                          {formatDate(r.selectionDate)}
+                        </td>
+                        <td>
+                          <span className="badge badge-selected" style={{ textTransform: 'capitalize' }}>
+                            {r.status || 'Selected'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>

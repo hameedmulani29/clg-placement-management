@@ -29,10 +29,10 @@ const errorHandler = (err, req, res, next) => {
     message = `Invalid format for field: '${err.path}' with provided value: '${err.value}'`;
   }
 
-  // Handle MongoDB Duplicate Key (E11000)
-  if (err.code === 11000) {
+  // Handle Duplicate Key / Unique Constraint (SQLite or MongoDB E11000)
+  if (err.code === 11000 || (err.message && err.message.includes('UNIQUE constraint failed'))) {
     statusCode = 409;
-    const duplicatedField = Object.keys(err.keyValue || {})[0] || 'field';
+    const duplicatedField = Object.keys(err.keyValue || {})[0] || (err.message && err.message.match(/UNIQUE constraint failed: [^.]+\.(.+)/)?.[1]) || 'field';
     const duplicatedValue = err.keyValue ? err.keyValue[duplicatedField] : '';
     message = `Duplicate value '${duplicatedValue}' detected for '${duplicatedField}'. Must be unique.`;
   }

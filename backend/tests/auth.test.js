@@ -1,14 +1,12 @@
 const request = require('supertest');
-const mongoose = require('mongoose');
+const { connectDB, disconnectDB } = require('../src/config/db');
 const app = require('../src/app');
 const User = require('../src/models/User');
 const StudentProfile = require('../src/models/StudentProfile');
 
-const TEST_MONGO_URI = process.env.MONGODB_URI_TEST || 'mongodb://127.0.0.1:27017/placement_test_db';
-
 beforeAll(async () => {
   process.env.NODE_ENV = 'test';
-  await mongoose.connect(TEST_MONGO_URI);
+  await connectDB(':memory:');
   await User.deleteMany({});
   await StudentProfile.deleteMany({});
 });
@@ -16,7 +14,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await User.deleteMany({});
   await StudentProfile.deleteMany({});
-  await mongoose.connection.close();
+  await disconnectDB();
 });
 
 describe('Authentication & RBAC Integration Tests (Phase 2)', () => {

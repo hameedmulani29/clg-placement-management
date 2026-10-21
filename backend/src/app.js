@@ -3,6 +3,7 @@ const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const { connection } = require('./config/db');
 require('dotenv').config();
 
 const { errorHandler } = require('./middleware/errorHandler');
@@ -67,8 +68,11 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // System Health Check Endpoint
 app.get('/api/v1/health', (req, res) => {
+  const dbStatus = connection.readyState === 1 ? 'connected' : 'disconnected';
+
   res.status(200).json({
     status: 'healthy',
+    database: dbStatus,
     service: 'College Placement Management API',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),

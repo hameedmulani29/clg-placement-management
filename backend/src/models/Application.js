@@ -1,54 +1,24 @@
-const mongoose = require('mongoose');
+const { BaseModel, registerModel } = require('./BaseModel');
+const MongoApplication = require('./mongoose/Application');
+const { createModelBridge } = require('./modelBridge');
 
-const applicationSchema = new mongoose.Schema(
-  {
-    placementDriveId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'PlacementDrive',
-      required: [true, 'Placement drive ID is required'],
-      index: true,
-    },
-    studentId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'StudentProfile',
-      required: [true, 'Student profile ID is required'],
-      index: true,
-    },
-    appliedDate: {
-      type: Date,
-      default: Date.now,
-    },
-    status: {
-      type: String,
-      enum: {
-        values: ['applied', 'shortlisted', 'interview_scheduled', 'selected', 'rejected'],
-        message: 'Invalid application status',
-      },
-      default: 'applied',
-      index: true,
-    },
-    currentRound: {
-      type: Number,
-      default: 1,
-      min: 1,
-    },
-    notes: {
-      type: String,
-      default: '',
-    },
-    resumeSnapshotKey: {
-      type: String,
-      default: null,
-    },
-  },
-  {
-    timestamps: true,
+class Application extends BaseModel {
+  static tableName = 'applications';
+  static relations = {
+    placementDriveId: 'PlacementDrive',
+    studentId: 'StudentProfile',
+  };
+
+  constructor(data = {}) {
+    super(data);
+    if (!this.status) this.status = 'applied';
+    if (this.currentRound === undefined) this.currentRound = 1;
+    if (!this.appliedDate) this.appliedDate = new Date().toISOString();
+    if (this.notes === undefined) this.notes = '';
+    if (this.resumeSnapshotKey === undefined) this.resumeSnapshotKey = null;
   }
-);
+}
 
-// Compound Unique Index: Prevents duplicate applications for the same drive
-applicationSchema.index({ placementDriveId: 1, studentId: 1 }, { unique: true });
+registerModel('Application', Application);
 
-const Application = mongoose.model('Application', applicationSchema);
-
-module.exports = Application;
+module.exports = createModelBridge(Application, MongoApplication);

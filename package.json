@@ -1,0 +1,20 @@
+{
+  "name": "college-placement-management",
+  "version": "1.0.0",
+  "description": "Cloud-Based College Placement Management System (PlaceCloud)",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k -n \"BACKEND,FRONTEND\" -c \"cyan.bold,magenta.bold\" \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend",
+    "seed": "npm run seed --prefix backend",
+    "seed:mongo": "npm run seed:mongo --prefix backend",
+    "setup:mongo": "npm run setup:mongo --prefix backend",
+    "test": "npm run test --prefix backend",
+    "build": "npm run build --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

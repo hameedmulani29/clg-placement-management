@@ -1,31 +1,361 @@
-# Cloud-Based College Placement Management System (PlaceCloud)
+# 🎓 Cloud-Based College Placement Management System (PlaceCloud)
 
-A comprehensive, cloud-native campus placement automation platform bridging students, college placement training & placement cells (TPO), and corporate recruiters.
+[![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%7C%20Vite%20%7C%20Recharts-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Backend](https://img.shields.io/badge/Backend-Node.js%2020%20%7C%20Express-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Database](https://img.shields.io/badge/Database-MongoDB%20Atlas%20%7C%20SQLite%20Fallback-47A248?logo=mongodb&logoColor=white)](https://www.mongodb.com/cloud/atlas)
+[![Hosting](https://img.shields.io/badge/Deployed%20On-Vercel%20%2B%20Render-black?logo=vercel&logoColor=white)](https://vercel.com)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
----
-
-## 🌟 Key Features
-
-- **Role-Based Portals**: Tailored interfaces and RBAC security for **Students**, **College Placement Officers (Admin)**, and **Company Recruiters**.
-- **Real-Time Automated Eligibility Engine**: Automatically checks students against drive parameters (CGPA, allowed branches, graduation passout year, active backlogs) and displays granular eligibility feedback.
-- **One-Click Application Tracking**: Students apply to eligible drives, preventing duplicate submissions, and track stage progression (`Applied` → `Shortlisted` → `Interview Scheduled` → `Selected`).
-- **Private Cloud Object Storage (Amazon S3)**: Resumes are stored privately in Amazon S3 (with fallback to local sandboxed storage in offline dev mode) and delivered via short-lived AWS presigned URLs (15-min expiry).
-- **Placement Analytics & Reports**: Live interactive dashboards with Recharts displaying department-wise placement metrics, company hiring distributions, and one-click NAAC/NBA compliance CSV export.
-- **Auditing & Notification Pipeline**: Instant in-app alerts on interview schedule updates, selection results, and administrative audit logging.
+A modern, cloud-native campus placement automation platform bridging **Students**, **College Training & Placement Officers (TPO / Admins)**, and **Corporate Recruiters**. Built with an automated eligibility evaluation engine, real-time stage tracking, cloud document management, and interactive placement analytics.
 
 ---
 
-## 🏗️ Architecture & Technology Stack
+## 📑 Table of Contents
 
-| Layer | Technologies & Cloud Services |
-|---|---|
-| **Client / Frontend** | React.js 18, Vite, React Router v6, Recharts, Lucide Icons, Responsive CSS3 |
-| **Server / Backend** | Node.js 20+, Express.js 4.x, Multer, Helmet, Rate-Limit, Morgan |
-| **Cloud Database** | MongoDB Atlas (Multi-AZ Replica Set, TLS encrypted) |
-| **Cloud Storage** | Amazon Web Services (AWS) S3 (Private Bucket + Presigned URLs) |
-| **Authentication** | JWT (JSON Web Tokens) + Bcrypt Password Hashing (Salt 10) |
-| **Testing** | Jest, Supertest, Postman Collection |
-| **Cloud Deployment** | AWS Amplify (Frontend) + AWS App Runner / Container (Backend) |
+- [🌟 Key System Features](#-key-system-features)
+- [🏗️ System Architecture](#️-system-architecture)
+- [🚀 100% Free Cloud Hosting Guide (Vercel + Render + MongoDB Atlas)](#-100-free-cloud-hosting-guide-vercel--render--mongodb-atlas)
+  - [Step 1: Set Up Free Cloud Database (MongoDB Atlas)](#step-1-set-up-free-cloud-database-mongodb-atlas)
+  - [Step 2: Deploy Backend REST API on Render](#step-2-deploy-backend-rest-api-on-render)
+  - [Step 3: Deploy Frontend Web App on Vercel](#step-3-deploy-frontend-web-app-on-vercel)
+  - [Step 4: Final CORS Handshake & Connection](#step-4-final-cors-handshake--connection)
+  - [Step 5: Post-Deployment Verification](#step-5-post-deployment-verification)
+- [⚡ Free-Tier Optimizations & Troubleshooting](#-free-tier-optimizations--troubleshooting)
+- [🔑 Demo Test Accounts & Roles](#-demo-test-accounts--roles)
+- [💻 Local Development & One-Command Quickstart](#-local-development--one-command-quickstart)
+- [📁 Repository Directory Structure](#-repository-directory-structure)
+- [📡 API Endpoints Reference](#-api-endpoints-reference)
+
+---
+
+## 🌟 Key System Features
+
+- **Role-Based Access Control (RBAC)**: Dedicated, responsive portals with distinct permission boundaries for **Students**, **TPO Admins**, and **Company Recruiters**.
+- **Automated Eligibility Engine**: Instant validation of student credentials against drive parameters (minimum CGPA, permitted engineering branches, graduation passing batch, active backlogs).
+- **End-to-End Application Tracking**: One-click student applications, duplicate prevention, and stage lifecycle management (`Applied` → `Shortlisted` → `Interview Scheduled` → `Selected` / `Rejected`).
+- **Cloud Resume Pipeline**: Support for private Amazon S3 storage with 15-minute expiring presigned URLs (with zero-configuration local sandbox fallback).
+- **Placement Analytics & Reports**: Live interactive visual charts (Recharts) detailing department-wise hiring, top recruiting companies, package distributions, and one-click NAAC/NBA compliance CSV report exports.
+- **Auditing & Notification Pipeline**: Instant in-app alerts on interview schedule updates, application status changes, and administrator audit logging.
+
+---
+
+## 🏗️ System Architecture
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                        CLIENT BROWSER (HTTPS)                          │
+└───────────────────▲───────────────────────────────▲────────────────────┘
+                    │                               │
+        HTML / CSS / JS Assets           REST API Calls (Bearer JWT)
+                    │                               │
+┌───────────────────┴───────────────┐   ┌───────────┴────────────────────┐
+│      VERCEL CLOUD EDGE            │   │      RENDER WEB SERVICE        │
+│   (React 18 + Vite SPA Client)    │   │  (Node.js 20 + Express Engine) │
+│                                   │   │                                │
+│   • Global CDN Distribution       │   │   • JWT Auth & RBAC Guard      │
+│   • SPA Route Rewrites            │   │   • Eligibility Rule Engine    │
+│   • Static Asset Optimization     │   │   • Centralized Error Handler  │
+└───────────────────────────────────┘   └───────────┬────────────────────┘
+                                                    │
+                                  ┌─────────────────┴──────────────────┐
+                                  │                                    │
+                                  ▼                                    ▼
+                     ┌──────────────────────────┐         ┌──────────────────────────┐
+                     │   MONGODB ATLAS (M0)     │         │   AWS S3 / LOCAL STORAGE │
+                     │  (Persistent Cloud Data) │         │ (Resumes & Presigned URLs)│
+                     │                          │         │                          │
+                     │  • Users & Profiles      │         │  • Private PDF Bucket    │
+                     │  • Placement Drives      │         │  • SSE-S3 Encryption     │
+                     │  • Applications & Status │         │  • 15-Min Expiring Links │
+                     └──────────────────────────┘         └──────────────────────────┘
+```
+
+---
+
+## 🚀 100% Free Cloud Hosting Guide (Vercel + Render + MongoDB Atlas)
+
+This framework enables you to host the entire full-stack system on **100% free tiers** with **zero hosting cost** and **no credit card required**.
+
+| Component | Platform | Free Tier Benefits |
+|---|---|---|
+| **Database** | **MongoDB Atlas** | M0 Shared Cluster (512 MB storage, free forever) |
+| **Backend API** | **Render** | Free Web Service (512 MB RAM, free HTTPS, automated CI/CD) |
+| **Frontend App**| **Vercel** | Free Hobby Tier (Fast global Edge CDN, automatic Git deployments) |
+
+---
+
+### Step 1: Set Up Free Cloud Database (MongoDB Atlas)
+
+Because Render's free tier uses ephemeral containers, SQLite files reset when the server sleeps. MongoDB Atlas provides persistent, reliable cloud storage.
+
+1. **Sign Up**: Go to [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas) and create a free account.
+2. **Create Cluster**:
+   - Click **Create Deployment**.
+   - Choose the **M0 Free (Shared)** tier.
+   - Select cloud provider **AWS** and the region closest to you (e.g., `ap-south-1` Mumbai or `us-east-1` N. Virginia).
+   - Name your cluster (e.g., `placecloud-cluster`) and click **Create**.
+3. **Configure Database User**:
+   - Go to **Security** → **Database Access** → **Add New Database User**.
+   - Authentication Method: **Password**.
+   - Username: `placecloud_admin`
+   - Password: Click *Autogenerate Secure Password* or type a secure password (avoid special characters like `@`, `:`, `/` or URL-encode them).
+   - Privileges: Select **Read and write to any database**.
+   - Click **Add User**.
+4. **Configure IP Whitelist (Network Access)**:
+   - Go to **Security** → **Network Access** → **Add IP Address**.
+   - Click **Allow Access from Anywhere** (`0.0.0.0/0`).
+   - *(Note: This is required because free cloud services like Render dynamically rotate outbound IP addresses).*
+   - Click **Confirm**.
+5. **Copy Connection String**:
+   - In the sidebar, click **Deployment** → **Database** → Click **Connect**.
+   - Select **Drivers** (Node.js).
+   - Copy the SRV connection URI:
+     ```text
+     mongodb+srv://placecloud_admin:<password>@placecloud-cluster.xxxxx.mongodb.net/?retryWrites=true&w=majority
+     ```
+   - Add your database name `/placecloud` right before the `?`:
+     ```text
+     mongodb+srv://placecloud_admin:<password>@placecloud-cluster.xxxxx.mongodb.net/placecloud?retryWrites=true&w=majority
+     ```
+
+---
+
+### Step 2: Deploy Backend REST API on Render
+
+1. **Push your code to GitHub**: Make sure your project repository is uploaded to GitHub.
+2. **Log in to Render**: Visit [render.com](https://render.com) and sign in using your GitHub account.
+3. **Create a New Web Service**:
+   - In the Render Dashboard, click **New +** → **Web Service**.
+   - Select **Build and deploy from a Git repository** and connect your repository.
+4. **Configure Web Service Settings**:
+   | Field | Value | Notes |
+   |---|---|---|
+   | **Name** | `placecloud-backend` | Unique name for your backend API |
+   | **Region** | Closest to your MongoDB region | e.g. Frankfurt, Singapore, or Oregon |
+   | **Branch** | `main` or `master` | Target Git deployment branch |
+   | **Root Directory** | `backend` | **CRITICAL**: Tells Render your backend folder |
+   | **Runtime** | `Node` | Node.js runtime |
+   | **Build Command** | `npm install` | Installs backend dependencies |
+   | **Start Command** | `npm start` | Runs `node src/server.js` |
+   | **Instance Type** | `Free` | 512 MB RAM / 0.1 CPU ($0/month) |
+
+5. **Set Environment Variables on Render**:
+   Scroll down to the **Environment Variables** section and add the following keys:
+
+   | Key | Value | Description |
+   |---|---|---|
+   | `NODE_ENV` | `production` | Enables production security & logging mode |
+   | `PORT` | `5000` | Port for the Express server |
+   | `MONGODB_URI` | `mongodb+srv://placecloud_admin:...` | Your MongoDB Atlas connection URI from Step 1 |
+   | `JWT_SECRET` | `placecloud_super_secret_jwt_key_2026_prod` | 32+ character random secret string |
+   | `JWT_EXPIRES_IN` | `24h` | Token expiration window |
+   | `FRONTEND_URL` | `http://localhost:5173` | *(Temporary placeholder; we will update this in Step 4 with your Vercel URL)* |
+
+   *(Optional AWS S3 credentials can also be added here if you are using private AWS S3 bucket storage; otherwise, the built-in fallback will be active).*
+
+6. **Deploy Service**:
+   - Click **Create Web Service**.
+   - Render will build and deploy your Node.js application.
+   - Once the deployment log displays `PlaceCloud REST API Server Running on port 5000`, copy your assigned Render URL (e.g., `https://placecloud-backend.onrender.com`).
+7. **Verify Backend Health**:
+   Open a new browser tab and visit:
+   ```text
+   https://placecloud-backend.onrender.com/api/v1/health
+   ```
+   You should see:
+   ```json
+   {
+     "status": "healthy",
+     "database": "connected",
+     "service": "College Placement Management API",
+     "environment": "production"
+   }
+   ```
+
+---
+
+### Step 3: Deploy Frontend Web App on Vercel
+
+1. **Log in to Vercel**: Visit [vercel.com](https://vercel.com) and sign in with GitHub.
+2. **Add New Project**:
+   - In your dashboard, click **Add New...** → **Project**.
+   - Find your repository and click **Import**.
+3. **Configure Project Settings**:
+   - **Framework Preset**: Select `Vite`.
+   - **Root Directory**: Click **Edit** and set to `frontend` (**CRITICAL**).
+   - **Build and Output Settings**:
+     - Build Command: `npm run build`
+     - Output Directory: `dist`
+     - Install Command: `npm install`
+4. **Configure Environment Variables**:
+   Under the **Environment Variables** section, add:
+
+   | Key | Value | Note |
+   |---|---|---|
+   | `VITE_API_BASE_URL` | `https://placecloud-backend.onrender.com` | **Use your live Render URL from Step 2. Do NOT add trailing slash, and do NOT add `/api/v1`**. |
+
+5. **SPA Routing Configuration (`vercel.json`)**:
+   This repository includes `frontend/vercel.json` with single-page app rewrite rules:
+   ```json
+   {
+     "rewrites": [
+       {
+         "source": "/(.*)",
+         "destination": "/index.html"
+       }
+     ]
+   }
+   ```
+   *This ensures that reloading routes like `/student/drives` or `/admin/analytics` in the browser will never return a 404 error.*
+
+6. **Deploy Project**:
+   - Click **Deploy**.
+   - Vercel will bundle and deploy the client within ~45 seconds.
+   - Copy your live Vercel domain URL (e.g., `https://placecloud-frontend.vercel.app`).
+
+---
+
+### Step 4: Final CORS Handshake & Connection
+
+Now that your frontend has a live public URL, allow it in your backend's CORS whitelist to permit authenticated requests:
+
+1. Go back to your [Render Dashboard](https://dashboard.render.com).
+2. Select your `placecloud-backend` service.
+3. Click **Environment** in the left sidebar.
+4. Locate `FRONTEND_URL` and update its value to your Vercel deployment URL:
+   ```text
+   FRONTEND_URL=https://placecloud-frontend.vercel.app
+   ```
+   *(Ensure there is no trailing slash).*
+5. Click **Save Changes**. Render will automatically trigger a rolling restart of your backend service.
+
+---
+
+### Step 5: Post-Deployment Verification
+
+1. **Database Initialization / Seeding**:
+   - PlaceCloud automatically seeds default enterprise data if your MongoDB Atlas cluster is fresh on first startup!
+   - Alternatively, you can seed manually from your local terminal with your Atlas URI configured:
+     ```bash
+     npm run setup:mongo
+     ```
+2. **Open Your Live Application**: Navigate to your Vercel frontend URL (`https://placecloud-frontend.vercel.app`).
+3. **Log in**: Test signing in with any of the demo accounts listed below.
+4. **Smoke Test Features**:
+   - Apply for a drive as a Student.
+   - Schedule an interview round as a Recruiter.
+   - View analytics and export NAAC/NBA placement CSV as an Admin.
+
+---
+
+## ⚡ Free-Tier Optimizations & Troubleshooting
+
+### 1. Render Free Tier "Cold Start" (Spin-Down Delay)
+- **Behavior**: On Render's free tier, web services spin down after **15 minutes of inactivity**. When a new visitor arrives, it takes **30–50 seconds** to wake up.
+- **Solution (Keep-Alive Ping)**:
+  1. Go to [cron-job.org](https://cron-job.org) or [UptimeRobot](https://uptimerobot.com) (both 100% free).
+  2. Create an HTTP monitor that pings your health check endpoint every **10 to 14 minutes**:
+     ```text
+     https://placecloud-backend.onrender.com/api/v1/health
+     ```
+  3. This keeps your free Render service awake 24/7 without delays!
+
+### 2. CORS Errors (`Blocked by CORS policy: Origin not allowed`)
+- Verify that `FRONTEND_URL` on Render matches your Vercel URL exactly, including `https://`, and has **no trailing slash**:
+  - ✅ Correct: `https://placecloud-frontend.vercel.app`
+  - ❌ Incorrect: `https://placecloud-frontend.vercel.app/`
+
+### 3. Vercel Returns `404 Not Found` on Page Refresh
+- This happens in Single-Page Applications when refreshing URLs like `/admin/drives`.
+- Ensure `frontend/vercel.json` exists in your repository with the rewrite configuration to `/index.html`.
+
+### 4. API Requests Return `404` or `//api/v1`
+- Verify that `VITE_API_BASE_URL` on Vercel is set to `https://your-backend.onrender.com` without `/api/v1` or trailing slashes, as the frontend client automatically constructs `/api/v1/*` paths.
+
+### 5. MongoDB Connection Times Out on Render
+- In MongoDB Atlas, verify **Network Access** has IP `0.0.0.0/0` added.
+- If your password has special characters like `@` or `#`, encode them (e.g. `#` → `%23`), or generate a strictly alphanumeric password.
+
+---
+
+## 🔑 Demo Test Accounts & Roles
+
+Once seeded, you can immediately test all three role-based portals on `/login`:
+
+| Persona | Role | Email | Password | Primary Capabilities |
+|---|---|---|---|---|
+| **Student** | `student` | `arjun.sharma@college.edu` | `StudentPassword123!` | View eligible drives, apply, track status, view interview invitations |
+| **Recruiter** | `recruiter` | `recruiter.google@google.com` | `RecruiterPassword123!` | Review applicants, update recruitment stages, schedule interviews |
+| **TPO Admin** | `admin` | `admin@college.edu` | `AdminPassword123!` | System-wide analytics, manage drives, student directory, export CSV reports |
+
+---
+
+## 💻 Local Development & One-Command Quickstart
+
+### 1. Prerequisites
+- **Node.js**: `v18.0.0` or higher
+- **npm**: `v9.0.0` or higher
+- **Git**
+
+### 2. Clone and Install Dependencies
+```bash
+# Clone the repository
+git clone https://github.com/your-username/college-placement-management.git
+cd college-placement-management
+
+# Install dependencies for root, backend, and frontend
+npm run install:all
+```
+
+### 3. Environment Variables Configuration
+
+#### Backend Configuration (`backend/.env`):
+```env
+PORT=5000
+NODE_ENV=development
+
+# MongoDB Atlas (or leave blank to use zero-config local SQLite fallback):
+MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/placecloud?retryWrites=true&w=majority
+
+# Local SQLite fallback path (used automatically if MONGODB_URI is empty):
+SQLITE_DB_PATH=./data/placement.db
+
+# JWT Security
+JWT_SECRET=super_secret_jwt_key_placement_system_2026_change_in_production
+JWT_EXPIRES_IN=24h
+
+# AWS S3 Cloud Storage (Optional - fallback to local storage if blank)
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_S3_BUCKET_NAME=college-placement-resumes-dev
+
+# Allowed Frontend URL
+FRONTEND_URL=http://localhost:5173
+```
+
+#### Frontend Configuration (`frontend/.env`):
+```env
+# Leave empty in local dev to use Vite proxy (/api -> localhost:5000)
+VITE_API_BASE_URL=
+```
+
+### 4. Seed Database & Run Full Stack
+```bash
+# Seed initial demo data:
+# For MongoDB Atlas:
+npm run setup:mongo
+
+# Or for local SQLite fallback:
+npm run seed
+
+# Start both Backend (:5000) & Frontend (:5173) concurrently:
+npm run dev
+```
+
+- **Frontend Application**: [http://localhost:5173](http://localhost:5173)
+- **Backend API Gateway**: [http://localhost:5000/api/v1](http://localhost:5000/api/v1)
+- **Health Check Endpoint**: [http://localhost:5000/api/v1/health](http://localhost:5000/api/v1/health)
 
 ---
 
@@ -34,83 +364,78 @@ A comprehensive, cloud-native campus placement automation platform bridging stud
 ```text
 college-placement-management/
 ├── backend/
+│   ├── data/                 # SQLite local database storage (fallback)
+│   ├── scripts/
+│   │   ├── seed.js           # SQLite relational demo seeder
+│   │   └── setup-mongodb.js  # MongoDB Atlas initialization & seeder
 │   ├── src/
-│   │   ├── config/          # Database, AWS S3, and environment configs
-│   │   ├── controllers/     # Request handlers (auth, student, drive, etc.)
-│   │   ├── middleware/      # JWT auth, RBAC, error handling, rate limiting
-│   │   ├── models/          # Mongoose database schemas & validation
-│   │   ├── routes/          # Express route definitions (/api/v1/*)
-│   │   ├── services/        # Eligibility engine, S3 service, analytics
-│   │   ├── utils/           # Token generators, responses, CSV helpers
-│   │   ├── app.js           # Express app pipeline & middleware setup
-│   │   └── server.js        # Server listener and database connector
-│   ├── tests/               # Automated unit & integration tests
-│   ├── scripts/             # Database seed scripts with demo data
+│   │   ├── config/           # Database connectors, S3 config, mongoSeeder
+│   │   ├── controllers/      # Route controllers (auth, student, drive, etc.)
+│   │   ├── middleware/       # JWT auth, RBAC permissions, error handlers
+│   │   ├── models/           # Dual models (SQLite queries & Mongoose schemas)
+│   │   ├── routes/           # Express router endpoints (/api/v1/*)
+│   │   ├── services/         # Automated eligibility engine, S3 resume service
+│   │   ├── utils/            # Token signers, API formatters, CSV builders
+│   │   ├── app.js            # Express middleware pipeline, CORS & Helmet
+│   │   └── server.js         # HTTP server entry point & graceful shutdown
+│   ├── uploads/              # Local storage fallback directory for resumes
 │   ├── package.json
 │   └── .env.example
 ├── frontend/
 │   ├── src/
-│   │   ├── components/      # Reusable UI (Navbar, Sidebar, Modals, Cards)
-│   │   ├── pages/           # Pages (Landing, Dashboards, Drives, Profiles, etc.)
-│   │   ├── layouts/         # Role-based dashboard layouts
-│   │   ├── services/        # Axios API client modules
-│   │   ├── hooks/           # Custom React hooks (useAuth, useFetch)
-│   │   ├── utils/           # Formatters, status helpers, date utils
-│   │   ├── styles/          # Global CSS, variables, themes
-│   │   ├── App.jsx          # Route declarations & auth guards
-│   │   └── main.jsx         # React DOM mounting
+│   │   ├── components/       # Reusable components (Navbar, Sidebar, Modals)
+│   │   ├── pages/            # Role-specific portal pages & landing page
+│   │   ├── layouts/          # Dashboard layouts
+│   │   ├── services/         # Axios API clients & interceptors
+│   │   ├── hooks/            # useAuth, useFetch custom hooks
+│   │   ├── styles/           # Global styles, variables, theme overrides
+│   │   ├── App.jsx           # React router routes & RBAC protection
+│   │   └── main.jsx          # React DOM entry point
 │   ├── index.html
-│   ├── vite.config.js
+│   ├── vite.config.js        # Vite build & local API proxy configuration
+│   ├── vercel.json           # Vercel SPA route rewrite configuration
 │   ├── package.json
 │   └── .env.example
-├── docs/
-│   ├── architecture.md      # Detailed cloud system architecture
-│   ├── database-design.md   # Schemas, ER diagrams, indexes
-│   ├── api-documentation.md # API endpoint specifications
-│   └── deployment-guide.md  # Step-by-step AWS & Atlas deployment guide
+├── docs/                     # Comprehensive architectural & viva guides
+│   ├── architecture.md       # Cloud system design & data flow
+│   ├── database-design.md    # ER diagrams, collections, schemas
+│   ├── api-documentation.md  # Detailed REST API specification
+│   ├── deployment-guide.md   # Enterprise AWS & cloud deployment guide
+│   └── project-report.md     # Academic project report
+├── package.json              # Monorepo root concurrency scripts
 ├── .gitignore
 └── README.md
 ```
 
 ---
 
-## 🚀 Quickstart & Local Setup Guide
+## 📡 API Endpoints Reference
 
-### 1. Prerequisites
-- **Node.js**: v18.0.0 or higher (Installed: `v24.13.0`)
-- **npm**: v9.0.0 or higher
-- **MongoDB**: MongoDB Atlas URI (or local MongoDB running on `mongodb://127.0.0.1:27017/placement_db`)
-- **Git**: Installed for version control
+All API routes are prefixed with `/api/v1`.
 
-### 2. Backend Setup
-```bash
-# Navigate to backend directory
-cd backend
+| Module | Method | Endpoint | Access Role | Description |
+|---|---|---|---|---|
+| **System** | `GET` | `/health` | Public | System uptime & database connection status |
+| **Auth** | `POST` | `/auth/login` | Public | User authentication & JWT issuance |
+| **Auth** | `POST` | `/auth/register` | Public | Student account registration |
+| **Auth** | `GET` | `/auth/me` | Authenticated | Fetch authenticated user profile |
+| **Students** | `GET` | `/students/profile` | Student | Get current student profile |
+| **Students** | `PUT` | `/students/profile` | Student | Update student academic & skill details |
+| **Students** | `GET` | `/students` | Admin, Recruiter | Filter & search student directory |
+| **Drives** | `GET` | `/drives` | Authenticated | List all active placement drives |
+| **Drives** | `GET` | `/drives/:id` | Authenticated | Get detailed drive information |
+| **Drives** | `POST` | `/drives` | Admin, Recruiter | Create a new campus placement drive |
+| **Applications**| `POST` | `/applications` | Student | Apply to a drive (auto eligibility check) |
+| **Applications**| `GET` | `/applications/my` | Student | View student's submitted applications |
+| **Applications**| `PATCH`| `/applications/:id/status` | Admin, Recruiter | Transition applicant stage |
+| **Interviews** | `POST` | `/interviews` | Admin, Recruiter | Schedule interview round & send notification |
+| **Resumes** | `POST` | `/resumes/upload` | Student | Upload resume document (PDF/DOCX) |
+| **Resumes** | `GET` | `/resumes/view/:studentId` | Authorized | Generate 15-min presigned URL to view resume |
+| **Reports** | `GET` | `/reports/export-csv` | Admin | Download NAAC/NBA compliant CSV placement report |
+| **Analytics** | `GET` | `/analytics/overview` | Admin | Comprehensive placement metrics & KPIs |
 
-# Install dependencies
-npm install
+---
 
-# Configure environment
-cp .env.example .env
-# Edit .env with your MongoDB Atlas connection string and JWT secret
+## 📄 License
 
-# Seed database with realistic demonstration data (Admins, Recruiters, Students, Drives)
-npm run seed
-
-# Run in development mode
-npm run dev
-# Backend API will be active at http://localhost:5000
-```
-
-### 3. Frontend Setup
-```bash
-# Open a new terminal and navigate to frontend directory
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start Vite development server
-npm run dev
-# Access the web application at http://localhost:5173
-```
+This project is licensed under the [MIT License](LICENSE).

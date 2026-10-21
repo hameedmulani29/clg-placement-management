@@ -2,6 +2,8 @@ const PlacementDrive = require('../models/PlacementDrive');
 const Company = require('../models/Company');
 const StudentProfile = require('../models/StudentProfile');
 const Application = require('../models/Application');
+const Notification = require('../models/Notification');
+const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
 const { checkEligibility } = require('../services/eligibilityService');
 const { successResponse, errorResponse, paginatedResponse } = require('../utils/apiResponse');
@@ -20,6 +22,7 @@ const createDrive = async (req, res, next) => {
       jobLocations,
       salaryPackage,
       eligibilityCriteria,
+      collegeSpecificCriteria,
       selectionRounds,
       applicationDeadline,
       driveDate,
@@ -43,6 +46,7 @@ const createDrive = async (req, res, next) => {
       jobLocations: Array.isArray(jobLocations) ? jobLocations : ['Bangalore'],
       salaryPackage,
       eligibilityCriteria,
+      collegeSpecificCriteria: Array.isArray(collegeSpecificCriteria) ? collegeSpecificCriteria : [],
       selectionRounds: Array.isArray(selectionRounds) ? selectionRounds : undefined,
       applicationDeadline: new Date(applicationDeadline),
       driveDate: new Date(driveDate),
@@ -51,12 +55,37 @@ const createDrive = async (req, res, next) => {
 
     await drive.save();
 
+    // Notify institutional TPO administrators of selected target colleges
+    if (Array.isArray(collegeSpecificCriteria) && collegeSpecificCriteria.length > 0) {
+      const adminUsers = await User.find({ role: 'admin' });
+      for (const crit of collegeSpecificCriteria) {
+        if (!crit.collegeName) continue;
+        const matchingAdmins = adminUsers.filter(
+          (a) => !a.collegeName || a.collegeName.toLowerCase() === crit.collegeName.toLowerCase()
+        );
+        const recipients = matchingAdmins.length > 0 ? matchingAdmins : adminUsers;
+        for (const admin of recipients) {
+          await Notification.create({
+            recipientId: admin._id,
+            title: `🎯 ${company.name} Selected ${crit.collegeName} for Placement Drive`,
+            message: `${company.name} has scheduled "${jobRole}" with targeted criteria for ${crit.collegeName}: Min CGPA ${crit.minCgpa ?? 'N/A'}, Allowed Branches: [${(crit.allowedDepartments || []).join(', ')}].`,
+            type: 'drive',
+            metadata: {
+              driveId: drive._id,
+              collegeName: crit.collegeName,
+              criteria: crit,
+            },
+          }).catch(() => {});
+        }
+      }
+    }
+
     await AuditLog.create({
       action: 'DRIVE_CREATED',
       performedBy: req.user._id,
       targetEntity: 'PlacementDrive',
       targetEntityId: drive._id,
-      changes: { title: drive.title, company: company.name },
+      changes: { title: drive.title, company: company.name, collegeCriteriaCount: collegeSpecificCriteria?.length || 0 },
       ipAddress: req.ip || '',
     });
 

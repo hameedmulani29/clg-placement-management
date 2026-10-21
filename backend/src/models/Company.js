@@ -1,67 +1,25 @@
-const mongoose = require('mongoose');
+const { BaseModel, registerModel } = require('./BaseModel');
+const MongoCompany = require('./mongoose/Company');
+const { createModelBridge } = require('./modelBridge');
 
-const companySchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: [true, 'Company name is required'],
-      unique: true,
-      trim: true,
-      index: true,
-    },
-    website: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    industry: {
-      type: String,
-      required: [true, 'Industry sector is required'],
-      trim: true,
-      index: true,
-    },
-    description: {
-      type: String,
-      default: '',
-      trim: true,
-    },
-    logoUrl: {
-      type: String,
-      default: '',
-    },
-    contactEmail: {
-      type: String,
-      required: [true, 'Contact email is required'],
-      lowercase: true,
-      trim: true,
-      match: [/^\S+@\S+\.\S+$/, 'Please provide a valid contact email'],
-    },
-    contactPhone: {
-      type: String,
-      default: '',
-      trim: true,
-    },
-    address: {
-      type: String,
-      default: '',
-      trim: true,
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
-      index: true,
-    },
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: false,
-    },
-  },
-  {
-    timestamps: true,
+class Company extends BaseModel {
+  static tableName = 'companies';
+  static booleanFields = ['isActive'];
+  static relations = {
+    createdBy: 'User',
+  };
+
+  constructor(data = {}) {
+    super(data);
+    if (this.isActive === undefined) this.isActive = true;
+    if (this.website === undefined) this.website = '';
+    if (this.description === undefined) this.description = '';
+    if (this.logoUrl === undefined) this.logoUrl = '';
+    if (this.contactPhone === undefined) this.contactPhone = '';
+    if (this.address === undefined) this.address = '';
   }
-);
+}
 
-const Company = mongoose.model('Company', companySchema);
+registerModel('Company', Company);
 
-module.exports = Company;
+module.exports = createModelBridge(Company, MongoCompany);

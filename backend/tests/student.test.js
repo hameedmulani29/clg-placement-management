@@ -1,5 +1,5 @@
 const request = require('supertest');
-const mongoose = require('mongoose');
+const { connectDB, disconnectDB } = require('../src/config/db');
 const app = require('../src/app');
 const User = require('../src/models/User');
 const StudentProfile = require('../src/models/StudentProfile');
@@ -7,8 +7,6 @@ const Company = require('../src/models/Company');
 const RecruiterProfile = require('../src/models/RecruiterProfile');
 const AuditLog = require('../src/models/AuditLog');
 const { generateToken } = require('../src/utils/jwtHelper');
-
-const TEST_MONGO_URI = process.env.MONGODB_URI_TEST || 'mongodb://127.0.0.1:27017/placement_test_db';
 
 let adminToken;
 let recruiterToken;
@@ -19,7 +17,7 @@ let studentProfileB;
 
 beforeAll(async () => {
   process.env.NODE_ENV = 'test';
-  await mongoose.connect(TEST_MONGO_URI);
+  await connectDB(':memory:');
   await User.deleteMany({});
   await StudentProfile.deleteMany({});
   await Company.deleteMany({});
@@ -100,7 +98,7 @@ afterAll(async () => {
   await Company.deleteMany({});
   await RecruiterProfile.deleteMany({});
   await AuditLog.deleteMany({});
-  await mongoose.connection.close();
+  await disconnectDB();
 });
 
 describe('Student Module & Profile Management Integration Tests (Phase 3)', () => {

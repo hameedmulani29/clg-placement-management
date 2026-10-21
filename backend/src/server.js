@@ -1,3 +1,5 @@
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 const app = require('./app');
 const { connectDB, disconnectDB } = require('./config/db');
 
@@ -9,18 +11,22 @@ let server;
 const startServer = async () => {
   try {
     await connectDB();
-
-    server = app.listen(PORT, () => {
-      console.log(`====================================================`);
-      console.log(`🚀 PlaceCloud REST API Server Running on port ${PORT}`);
-      console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`📡 Health Check: http://localhost:${PORT}/api/v1/health`);
-      console.log(`====================================================`);
-    });
   } catch (error) {
-    console.error(`Fatal: Failed to start server: ${error.message}`);
-    process.exit(1);
+    if (process.env.NODE_ENV === 'production') {
+      console.error(`Fatal: Failed to connect to database in production: ${error.message}`);
+      process.exit(1);
+    }
+    console.warn(`\n⚠️  [Database Warning] Could not connect to SQLite: ${error.message}`);
+    console.warn(`👉 [Database Tip] PlaceCloud will continue running. SQLite database is at backend/data/placement.db.\n`);
   }
+
+  server = app.listen(PORT, () => {
+    console.log(`====================================================`);
+    console.log(`🚀 PlaceCloud REST API Server Running on port ${PORT}`);
+    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`📡 Health Check: http://localhost:${PORT}/api/v1/health`);
+    console.log(`====================================================`);
+  });
 };
 
 // Graceful process termination

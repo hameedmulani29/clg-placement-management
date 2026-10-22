@@ -103,11 +103,17 @@ const RegisterStudentPage = () => {
         setError(res.message || 'Google registration failed.');
       }
     } catch (err) {
-      setError(
-        err.message ||
+      if (err.message === 'Network Error' || err.code === 'ERR_NETWORK') {
+        setError(
+          'Cannot reach the server (Network Error). If the backend is on Render free tier, it may be waking up from sleep (~45s) — please wait 30 seconds and retry. Also ensure VITE_API_BASE_URL is correct in Vercel.'
+        );
+      } else {
+        setError(
           err.response?.data?.message ||
-          'Google registration failed. Please check your network and configuration.'
-      );
+            err.message ||
+            'Google registration failed. Please check your network and configuration.'
+        );
+      }
     } finally {
       setGoogleLoading(false);
     }

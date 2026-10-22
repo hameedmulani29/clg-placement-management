@@ -76,6 +76,11 @@ export const signInWithGooglePopup = async () => {
         `This domain is not authorized in your Firebase console. Please add '${window.location.hostname}' to Firebase Authentication -> Settings -> Authorized domains.`
       );
     }
+    if (err.code === 'auth/network-request-failed') {
+      throw new Error(
+        `Firebase Network Error: Unable to communicate with Google authentication servers. Please check your internet connection, ensure third-party cookies or popups are not blocked, and verify that '${window.location.hostname}' is in Firebase Authorized Domains.`
+      );
+    }
     throw err;
   }
 };

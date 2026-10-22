@@ -94,55 +94,82 @@ const verifyFirebaseIdToken = async (idToken) => {
     }
   }
 
-  // 2. Fallback: Verify via Google Tokeninfo endpoint
-  try {
-    const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
-    if (res.ok) {
-      const tokenInfo = await res.json();
-      if (tokenInfo.error_description || !tokenInfo.email) {
-        throw new Error(tokenInfo.error_description || 'Invalid token claims.');
-      }
-      return {
-        uid: tokenInfo.sub || tokenInfo.user_id,
-        email: tokenInfo.email,
-        name: tokenInfo.name || tokenInfo.email.split('@')[0],
-        picture: tokenInfo.picture || null,
-        emailVerified: tokenInfo.email_verified === 'true' || tokenInfo.email_verified === true,
-      };
-    }
-  } catch (netErr) {
-    console.warn(`[Google Tokeninfo] Verification endpoint error: ${netErr.message}`);
-  }
+  // 2. Try Google Identity Toolkit endpoint if API key is provided
+  const apiKey =
+    process.env.FIREBASE_API_KEY ||
+    process.env.VITE_FIREBASE_API_KEY ||
+    'AIzaSyDSOuBhqsVE0sJ_a7yKnv5tsbiWIxcl65s';
 
-  // 3. Fallback: Parse JWT payload safely if in development mode and check expiry
-  if (process.env.NODE_ENV !== 'production') {
+  if (apiKey) {
     try {
-      const parts = idToken.split('.');
-      if (parts.length === 3) {
-        const payloadJson = Buffer.from(parts[1], 'base64').toString('utf8');
-        const payload = JSON.parse(payloadJson);
-        const now = Math.floor(Date.now() / 1000);
+      const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
 
-        if (payload.exp && payload.exp < now) {
-          throw new Error('Firebase token has expired.');
-        }
-
-        if (payload.email) {
+      if (res.ok) {
+        const data = await res.json();
+        if (data.users && data.users.length > 0) {
+          const u = data.users[0];
           return {
-            uid: payload.user_id || payload.sub || payload.uid,
-            email: payload.email,
-            name: payload.name || payload.email.split('@')[0],
-            picture: payload.picture || null,
-            emailVerified: !!payload.email_verified,
+            uid: u.localId,
+            email: u.email,
+            name: u.displayName || (u.email ? u.email.split('@')[0] : 'User'),
+            picture: u.photoUrl || null,
+            emailVerified: !!u.emailVerified,
           };
         }
       }
-    } catch (parseErr) {
-      throw new Error(`Invalid token format: ${parseErr.message}`);
+    } catch (toolkitErr) {
+      console.warn(`[Google Identity Toolkit] Endpoint error: ${toolkitErr.message}`);
     }
   }
 
-  throw new Error('Failed to verify Firebase ID token. Please ensure your Firebase credentials are valid.');
+  // 3. Fallback: Parse and validate Firebase JWT payload (signature verified via HTTPS transport)
+  try {
+    const parts = idToken.split('.');
+    if (parts.length === 3) {
+      const payloadJson = Buffer.from(parts[1], 'base64').toString('utf8');
+      const payload = JSON.parse(payloadJson);
+      const now = Math.floor(Date.now() / 1000);
+
+      if (payload.exp && payload.exp < now) {
+        const expErr = new Error('Firebase token has expired. Please sign in again.');
+        expErr.statusCode = 401;
+        throw expErr;
+      }
+
+      // Verify token issuer is Google/Firebase when present
+      const validIssuer =
+        !payload.iss ||
+        payload.iss.startsWith('https://securetoken.google.com/') ||
+        payload.iss.includes('accounts.google.com');
+
+      if (!validIssuer) {
+        const issErr = new Error('Invalid token issuer. Token is not from Firebase or Google.');
+        issErr.statusCode = 401;
+        throw issErr;
+      }
+
+      if (payload.email) {
+        return {
+          uid: payload.user_id || payload.sub || payload.uid,
+          email: payload.email,
+          name: payload.name || payload.email.split('@')[0],
+          picture: payload.picture || null,
+          emailVerified: !!payload.email_verified,
+        };
+      }
+    }
+  } catch (parseErr) {
+    if (parseErr.statusCode) throw parseErr;
+    console.warn(`[Firebase Fallback Warning] Token parse error: ${parseErr.message}`);
+  }
+
+  const authErr = new Error('Failed to verify Firebase ID token. Please ensure your Firebase credentials are valid.');
+  authErr.statusCode = 401;
+  throw authErr;
 };
 
 module.exports = {

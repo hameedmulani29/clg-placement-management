@@ -263,7 +263,12 @@ const googleAuth = async (req, res, next) => {
     }
 
     // Verify token using Firebase Admin or fallback
-    const tokenPayload = await verifyFirebaseIdToken(idToken);
+    let tokenPayload;
+    try {
+      tokenPayload = await verifyFirebaseIdToken(idToken);
+    } catch (tokenErr) {
+      return errorResponse(res, tokenErr.statusCode || 401, tokenErr.message || 'Firebase token verification failed.');
+    }
     const { uid, email, name, picture } = tokenPayload;
 
     if (!email) {

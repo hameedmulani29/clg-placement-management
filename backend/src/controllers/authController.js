@@ -286,8 +286,15 @@ const googleAuth = async (req, res, next) => {
         return errorResponse(res, 403, 'Your account has been deactivated. Please contact the administrator.');
       }
 
-      // Link googleId and avatarUrl if not already set
+      // Support role switching if user explicitly clicked Student, Recruiter, or TPO Admin tab
       let needsSave = false;
+      const requestedRole = ['student', 'recruiter', 'admin'].includes(role) ? role : null;
+      if (requestedRole && user.role !== requestedRole) {
+        user.role = requestedRole;
+        needsSave = true;
+      }
+
+      // Link googleId and avatarUrl if not already set
       if (!user.googleId) {
         user.googleId = uid;
         needsSave = true;
@@ -300,7 +307,7 @@ const googleAuth = async (req, res, next) => {
         await user.save();
       }
 
-      // Fetch corresponding profile
+      // Fetch or provision corresponding profile for active role
       let profile = null;
       if (user.role === 'student') {
         profile = await StudentProfile.findOne({ userId: user._id });
@@ -324,7 +331,23 @@ const googleAuth = async (req, res, next) => {
           await profile.save();
         }
       } else if (user.role === 'recruiter') {
-        profile = await RecruiterProfile.findOne({ userId: user._id }).populate('companyId', 'name logoUrl industry website');
+        profile = await RecruiterProfile.findOne({ userId: user._id });
+        if (!profile) {
+          const defaultCompany = await Company.findOne({});
+          profile = new RecruiterProfile({
+            userId: user._id,
+            companyId: defaultCompany ? defaultCompany._id : null,
+            designation: 'Talent Acquisition Partner',
+            phone: phone || '',
+          });
+          await profile.save();
+        }
+        if (profile && profile.companyId) {
+          const company = await Company.findById(profile.companyId);
+          if (company) {
+            profile = { ...(profile.toObject ? profile.toObject() : profile), companyId: company };
+          }
+        }
       }
 
       const token = generateToken({

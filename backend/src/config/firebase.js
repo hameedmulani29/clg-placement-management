@@ -100,7 +100,7 @@ const verifyFirebaseIdToken = async (idToken) => {
     process.env.VITE_FIREBASE_API_KEY ||
     'AIzaSyDSOuBhqsVE0sJ_a7yKnv5tsbiWIxcl65s';
 
-  if (apiKey) {
+  if (apiKey && process.env.NODE_ENV !== 'test') {
     try {
       const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
         method: 'POST',

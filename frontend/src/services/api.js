@@ -3,8 +3,16 @@ import axios from 'axios';
 const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
 const cleanBaseUrl = rawBaseUrl.replace(/\/+$/, '');
 
+// Safely normalize: handle whether cleanBaseUrl already contains /api/v1 or not
+let resolvedBaseUrl = '/api/v1';
+if (cleanBaseUrl) {
+  resolvedBaseUrl = cleanBaseUrl.endsWith('/api/v1')
+    ? cleanBaseUrl
+    : `${cleanBaseUrl}/api/v1`;
+}
+
 const api = axios.create({
-  baseURL: cleanBaseUrl ? `${cleanBaseUrl}/api/v1` : '/api/v1',
+  baseURL: resolvedBaseUrl,
   headers: {
     'Content-Type': 'application/json',
   },

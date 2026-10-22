@@ -1,7 +1,12 @@
 import axios from 'axios';
 
 const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
-const cleanBaseUrl = rawBaseUrl.replace(/\/+$/, '');
+const isLocalhost = typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+// If no VITE_API_BASE_URL is provided, automatically use the live Render backend in production
+const effectiveUrl = rawBaseUrl || (!isLocalhost ? 'https://clg-placement-management.onrender.com' : '');
+const cleanBaseUrl = effectiveUrl.replace(/\/+$/, '');
 
 // Safely normalize: handle whether cleanBaseUrl already contains /api/v1 or not
 let resolvedBaseUrl = '/api/v1';

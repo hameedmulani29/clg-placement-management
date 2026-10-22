@@ -7,6 +7,16 @@ const { isMongoActive } = require('../config/db');
 function createModelBridge(SqliteModel, MongoModel) {
   const handler = {
     get(target, prop, receiver) {
+      // Invariant: prototype is a non-configurable property on function targets
+      if (prop === 'prototype') {
+        return target.prototype;
+      }
+      if (prop === Symbol.hasInstance) {
+        return (instance) => {
+          const ActiveClass = isMongoActive() ? MongoModel : SqliteModel;
+          return instance instanceof ActiveClass || instance instanceof target;
+        };
+      }
       const active = isMongoActive() ? MongoModel : SqliteModel;
       const value = Reflect.get(active, prop);
       if (typeof value === 'function') {
@@ -16,7 +26,7 @@ function createModelBridge(SqliteModel, MongoModel) {
     },
     construct(target, args, newTarget) {
       const ActiveClass = isMongoActive() ? MongoModel : SqliteModel;
-      return Reflect.construct(ActiveClass, args, newTarget);
+      return Reflect.construct(ActiveClass, args, ActiveClass);
     },
     apply(target, thisArg, args) {
       const ActiveFn = isMongoActive() ? MongoModel : SqliteModel;

@@ -71,6 +71,16 @@ app.use('/api', apiRateLimiter);
 // Serve local uploads folder (dev fallback storage)
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
+// Root API Status & Welcome
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'PlaceCloud Placement Management API is live and operational.',
+    version: '1.0.0',
+    health: '/api/v1/health',
+  });
+});
+
 // System Health Check Endpoint
 app.get('/api/v1/health', (req, res) => {
   const dbStatus = connection.readyState === 1 ? 'connected' : 'disconnected';

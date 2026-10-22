@@ -34,9 +34,9 @@ beforeAll(async () => {
 
   // 2. Company & Recruiter
   company = await Company.create({
-    name: 'Microsoft Corporation',
+    name: 'Resume Test Enterprise Inc',
     industry: 'Enterprise Software & Cloud',
-    contactEmail: 'campus@microsoft.com',
+    contactEmail: 'campus@resumetest.com',
   });
 
   const recruiterUser = await User.create({ email: 'recruiter@microsoft.com', password: 'Password123!', role: 'recruiter' });

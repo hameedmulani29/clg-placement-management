@@ -135,8 +135,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           <button
             type="button"
             onClick={onClose}
-            className="btn btn-ghost btn-xs"
-            style={{ display: 'none', padding: '0.25rem' }}
+            className="btn btn-ghost btn-xs sidebar-close-btn"
             aria-label="Close sidebar navigation"
           >
             <X size={18} />

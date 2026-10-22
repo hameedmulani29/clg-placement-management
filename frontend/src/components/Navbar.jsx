@@ -458,7 +458,7 @@ const Navbar = ({ onToggleMobileSidebar, isMobileSidebarOpen }) => {
               {userInitials}
             </div>
 
-            <div style={{ textAlign: 'left', display: 'none', lineHeight: 1.15, '@media (minWidth: 768px)': { display: 'block' } }}>
+            <div className="navbar-user-text">
               <div
                 style={{
                   fontSize: 'var(--text-xs)',

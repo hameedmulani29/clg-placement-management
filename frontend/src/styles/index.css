@@ -863,6 +863,156 @@ tbody tr:hover {
 }
 
 /* ==========================================================================
+   Comprehensive Cross-Device Responsive System
+   ========================================================================== */
+
+/* Navbar responsive user elements */
+.navbar-user-text {
+  display: none;
+  text-align: left;
+  line-height: 1.15;
+}
+
+.sidebar-close-btn {
+  display: none !important;
+}
+
+/* Tablet & Mobile Breakpoints (max-width: 900px) */
+@media (max-width: 900px) {
+  .sidebar-close-btn {
+    display: inline-flex !important;
+  }
+}
+
+/* Phablet & Tablet (min-width: 640px) */
+@media (min-width: 640px) {
+  .navbar-user-text {
+    display: block;
+  }
+}
+
+/* Large Tablets / Small Laptops (max-width: 1024px) */
+@media (max-width: 1024px) {
+  .grid-cols-4 {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
+/* Tablets & Mobile Devices (max-width: 768px) */
+@media (max-width: 768px) {
+  /* Prevent horizontal overflow from floating decorative badges */
+  .hero-float-left,
+  .hero-float-right {
+    display: none !important;
+  }
+
+  .grid-cols-3,
+  .grid-cols-2 {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  /* Compact table padding */
+  th, td {
+    padding: 0.65rem 0.75rem;
+    font-size: var(--text-xs);
+  }
+
+  .table-container {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Form layouts */
+  .form-group-row {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+
+/* Mobile Devices (max-width: 640px) */
+@media (max-width: 640px) {
+  .page-body {
+    padding: 1rem 0.75rem 2.5rem;
+  }
+
+  .top-navbar {
+    padding: 0 0.85rem;
+    height: 56px;
+  }
+
+  .card {
+    padding: 1.15rem 1rem;
+  }
+
+  .grid-cols-4,
+  .grid-cols-3,
+  .grid-cols-2 {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  h1 {
+    font-size: 1.45rem !important;
+  }
+
+  h2 {
+    font-size: 1.25rem !important;
+  }
+
+  .btn {
+    font-size: var(--text-xs);
+  }
+
+  .modal-backdrop {
+    padding: 0.5rem;
+  }
+
+  .toast-container {
+    bottom: 1rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+    max-width: 100%;
+  }
+
+  .role-tab-btn {
+    padding: 0.65rem 0.85rem;
+    font-size: var(--text-xs);
+    justify-content: center;
+  }
+
+  .comparison-card {
+    padding: 1.25rem 1rem;
+  }
+}
+
+/* Small Smart Phones (max-width: 480px) */
+@media (max-width: 480px) {
+  .page-body {
+    padding: 0.85rem 0.65rem 2rem;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .btn-group {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .btn-group .btn {
+    width: 100%;
+  }
+
+  input, select, textarea {
+    font-size: 16px; /* Prevents auto-zoom on iOS Safari */
+  }
+}
+
+/* ==========================================================================
    Reduced Motion Preferences
    ========================================================================== */
 @media (prefers-reduced-motion: reduce) {

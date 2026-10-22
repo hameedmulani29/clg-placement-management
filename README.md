@@ -4,6 +4,7 @@
 [![Backend](https://img.shields.io/badge/Backend-Node.js%2020%20%7C%20Express-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Database](https://img.shields.io/badge/Database-MongoDB%20Atlas%20%7C%20SQLite%20Fallback-47A248?logo=mongodb&logoColor=white)](https://www.mongodb.com/cloud/atlas)
 [![Hosting](https://img.shields.io/badge/Deployed%20On-Vercel%20%2B%20Render-black?logo=vercel&logoColor=white)](https://vercel.com)
+[![UI](https://img.shields.io/badge/UI-Responsive%20%28Mobile%20%7C%20Tablet%20%7C%20Desktop%29-brightgreen)](#-key-system-features)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A modern, cloud-native campus placement automation platform bridging **Students**, **College Training & Placement Officers (TPO / Admins)**, and **Corporate Recruiters**. Built with an automated eligibility evaluation engine, real-time stage tracking, cloud document management, and interactive placement analytics.
@@ -40,6 +41,8 @@ A modern, cloud-native campus placement automation platform bridging **Students*
 ## 🌟 Key System Features
 
 - **Role-Based Access Control (RBAC)**: Dedicated, responsive portals with distinct permission boundaries for **Students**, **TPO Admins**, and **Company Recruiters**.
+- **Fully Responsive Cross-Device UI**: Seamless adaptive interface engineered for mobile (320px–480px), tablet (640px–1024px), and desktop screens with mobile drawer navigation, momentum horizontal table scrolling, reflowing stat grids, and zero layout overflow.
+- **Firebase Google Authentication**: One-click Google Sign-In with automated user profile provisioning, token verification, and seamless session caching alongside traditional JWT credential auth.
 - **Automated Eligibility Engine**: Instant validation of student credentials against drive parameters (minimum CGPA, permitted engineering branches, graduation passing batch, active backlogs).
 - **End-to-End Application Tracking**: One-click student applications, duplicate prevention, and stage lifecycle management (`Applied` → `Shortlisted` → `Interview Scheduled` → `Selected` / `Rejected`).
 - **Cloud Resume Pipeline**: Support for private Amazon S3 storage with 15-minute expiring presigned URLs (with zero-configuration local sandbox fallback).
@@ -500,6 +503,11 @@ SQLITE_DB_PATH=./data/placement.db
 JWT_SECRET=super_secret_jwt_key_placement_system_2026_change_in_production
 JWT_EXPIRES_IN=24h
 
+# Firebase Google Authentication (Backend token verification)
+FIREBASE_PROJECT_ID=your_firebase_project_id
+# Optional: Path to Firebase Service Account JSON or inline JSON string
+FIREBASE_SERVICE_ACCOUNT_KEY=
+
 # AWS S3 Cloud Storage (Optional - fallback to local storage if blank)
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=
@@ -514,6 +522,15 @@ FRONTEND_URL=http://localhost:5173
 ```env
 # Leave empty in local dev to use Vite proxy (/api -> localhost:5000)
 VITE_API_BASE_URL=
+
+# Firebase Google Authentication (Frontend Web App Config)
+VITE_FIREBASE_API_KEY=AIzaSy...
+VITE_FIREBASE_AUTH_DOMAIN=your-app.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-app.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=1234567890
+VITE_FIREBASE_APP_ID=1:1234567890:web:abcdef123456
+VITE_FIREBASE_MEASUREMENT_ID=G-XXXXXXXXXX
 ```
 
 ### 4. Seed Database & Run Full Stack

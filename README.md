@@ -20,6 +20,15 @@ A modern, cloud-native campus placement automation platform bridging **Students*
   - [Step 3: Deploy Frontend Web App on Vercel](#step-3-deploy-frontend-web-app-on-vercel)
   - [Step 4: Final CORS Handshake & Connection](#step-4-final-cors-handshake--connection)
   - [Step 5: Post-Deployment Verification](#step-5-post-deployment-verification)
+- [🔥 Firebase Google Authentication Setup (Step-by-Step Guide)](#-firebase-google-authentication-setup-step-by-step-guide)
+  - [Step 1: Create a Free Firebase Project](#step-1-create-a-free-firebase-project)
+  - [Step 2: Enable Google Authentication Provider](#step-2-enable-google-authentication-provider)
+  - [Step 3: Register a Web Application & Copy Config Keys](#step-3-register-a-web-application--copy-config-keys)
+  - [Step 4: Configure Authorized Domains in Firebase](#step-4-configure-authorized-domains-in-firebase)
+  - [Step 5: (Optional) Set Up Firebase Admin SDK Credentials](#step-5-optional-set-up-firebase-admin-sdk-credentials)
+  - [Step 6: Configure Environment Variables](#step-6-configure-environment-variables)
+  - [Step 7: Verification & Testing](#step-7-verification--testing)
+  - [Troubleshooting Firebase Common Errors](#troubleshooting-firebase-common-errors)
 - [⚡ Free-Tier Optimizations & Troubleshooting](#-free-tier-optimizations--troubleshooting)
 - [🔑 Demo Test Accounts & Roles](#-demo-test-accounts--roles)
 - [💻 Local Development & One-Command Quickstart](#-local-development--one-command-quickstart)
@@ -248,6 +257,173 @@ Now that your frontend has a live public URL, allow it in your backend's CORS wh
 
 ---
 
+## 🔥 Firebase Google Authentication Setup (Step-by-Step Guide)
+
+PlaceCloud features native **Firebase Google Authentication** for seamless, passwordless login and fast-track student onboarding.
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                        GOOGLE SIGN-IN FLOW                             │
+└────────────────────────────────────────────────────────────────────────┘
+  [Client Browser]
+        │
+        ▼ 1. Click "Continue with Google"
+  [Firebase Auth Popup] ──▶ User selects Google account
+        │
+        ▼ 2. Obtains verified Firebase ID Token (JWT)
+  [PlaceCloud Client]
+        │
+        ▼ 3. POST /api/v1/auth/google  { idToken, role }
+  [PlaceCloud Backend]
+        │
+        ▼ 4. Verifies token with Firebase Admin SDK / Google OAuth2
+        │    • Existing user: loads profile & issues PlaceCloud JWT session
+        │    • New user: automatically provisions Student / Recruiter profile
+        ▼
+  [Client Workspace] ──▶ Redirected to Dashboard (Student, Recruiter, Admin)
+```
+
+Follow this step-by-step procedure to connect your Firebase project:
+
+---
+
+### Step 1: Create a Free Firebase Project
+
+1. Open the [Firebase Console](https://console.firebase.google.com/) and log in with your Google account.
+2. Click **Create a project** (or **Add project**).
+3. Enter your project name (e.g. `placecloud-placement-auth` or `placecloud`).
+4. (Optional) You can disable Google Analytics to speed up setup, then click **Create project**.
+5. Wait for Firebase to finish provisioning, then click **Continue**.
+
+---
+
+### Step 2: Enable Google Authentication Provider
+
+1. In the Firebase Console left navigation sidebar, expand **Build** and select **Authentication**.
+2. Click **Get started**.
+3. Under the **Sign-in method** tab, locate **Google** in the "Additional providers" list and click it.
+4. Toggle the **Enable** switch to **ON**.
+5. Under **Project support email**, select your email address from the dropdown.
+6. Click **Save**.
+
+---
+
+### Step 3: Register a Web Application & Copy Config Keys
+
+1. In the top-left sidebar, click the **Settings gear icon (⚙️)** next to "Project Overview", then choose **Project settings**.
+2. In the **General** tab, scroll down to the **Your apps** card.
+3. Click the **Web icon (`</>`)** to add a web application.
+4. App nickname: `placecloud-frontend`.
+5. Leave "Also set up Firebase Hosting for this app" **unchecked** (we deploy on Vercel), then click **Register app**.
+6. Firebase will show your JavaScript SDK configuration snippet containing your keys:
+   ```javascript
+   const firebaseConfig = {
+     apiKey: "AIzaSyB...",
+     authDomain: "placecloud-xxx.firebaseapp.com",
+     projectId: "placecloud-xxx",
+     storageBucket: "placecloud-xxx.appspot.com",
+     messagingSenderId: "123456789...",
+     appId: "1:123456789:web:abcdef..."
+   };
+   ```
+   *(Keep this tab open; you will paste these keys into your frontend configuration).*
+
+---
+
+### Step 4: Configure Authorized Domains in Firebase
+
+For Google OAuth popups to succeed, the domain where your web app runs must be in Firebase's allowed list:
+
+1. In Firebase Console, navigate to **Build** → **Authentication** → **Settings** tab.
+2. Click **Authorized domains** in the sub-menu.
+3. Verify that `localhost` is already present (default).
+4. If you deployed your frontend to Vercel, click **Add domain**:
+   - Enter your Vercel subdomain (e.g. `placecloud-frontend.vercel.app`).
+   - Click **Add**.
+   *(Note: Do not include `https://` or trailing slashes, just the hostname).*
+
+---
+
+### Step 5: (Optional) Set Up Firebase Admin SDK Credentials
+
+The PlaceCloud backend uses the **Firebase Admin SDK** for cryptographic token verification. If omitted, the backend automatically uses Google's public OAuth2 token verification endpoint as a fallback. For maximum production security:
+
+1. In Firebase Console, navigate to **Project settings (⚙️)** → **Service accounts** tab.
+2. Ensure **Node.js** is selected.
+3. Click **Generate new private key** → Click **Generate key**.
+4. A JSON file will download to your computer (e.g. `placecloud-xxx-firebase-adminsdk-xxx.json`).
+5. Place this file inside your `backend/` directory (e.g. `backend/firebaseServiceAccount.json`).
+   *(Ensure this file is kept private and listed in `.gitignore`).*
+
+---
+
+### Step 6: Configure Environment Variables
+
+#### 1. Frontend Configuration (`frontend/.env`)
+Open `frontend/.env` (or copy from `frontend/.env.example`) and fill in the values from Step 3:
+
+```env
+# API Gateway URL (empty for Vite local proxy, or your Render backend URL)
+VITE_API_BASE_URL=
+
+# Firebase Client Web App Config
+VITE_FIREBASE_API_KEY=AIzaSyBxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+VITE_FIREBASE_AUTH_DOMAIN=placecloud-xxx.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=placecloud-xxx
+VITE_FIREBASE_STORAGE_BUCKET=placecloud-xxx.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=123456789012
+VITE_FIREBASE_APP_ID=1:123456789012:web:abcdef1234567890
+```
+
+#### 2. Backend Configuration (`backend/.env`)
+Open `backend/.env` and specify your Firebase Project ID:
+
+```env
+# Firebase Backend Admin
+FIREBASE_PROJECT_ID=placecloud-xxx
+
+# Optional: Path to service account JSON (or inline JSON string in production)
+FIREBASE_SERVICE_ACCOUNT_KEY=./firebaseServiceAccount.json
+```
+
+#### 3. Cloud Deployment (Vercel & Render)
+- **On Vercel**: Go to **Project Settings** → **Environment Variables** → Add all `VITE_FIREBASE_*` variables.
+- **On Render**: Go to **Environment** → Add `FIREBASE_PROJECT_ID` and (optionally) `FIREBASE_SERVICE_ACCOUNT_KEY`.
+
+---
+
+### Step 7: Verification & Testing
+
+1. **Launch the stack locally**:
+   ```bash
+   npm run dev
+   ```
+2. **Test Student Sign-In / Sign-Up**:
+   - Open your browser at `http://localhost:5173/login`.
+   - Ensure the **Student** tab is selected.
+   - Click **Continue with Google (Student)**.
+   - In the Google popup, choose your Google account.
+   - You will be authenticated immediately, your student profile will be auto-provisioned, and you will land on the **Student Dashboard** (`/dashboard`).
+3. **Test Fast-Track Intake**:
+   - Open `http://localhost:5173/register-student`.
+   - Click **Continue & Register with Google** for 1-click passwordless registration.
+4. **Test Existing Account Matching**:
+   - If an account already exists with the same email (e.g. `arjun.sharma@college.edu`), signing in with that Google account automatically links and signs into the existing profile without duplicating records.
+
+---
+
+### Troubleshooting Firebase Common Errors
+
+| Error Code / Message | Cause | Solution |
+|---|---|---|
+| `auth/unauthorized-domain` | The current domain is not in Firebase's authorized list. | Go to Firebase Console → Authentication → Settings → Authorized Domains → Add your domain (e.g. `localhost` or `your-app.vercel.app`). |
+| `auth/popup-closed-by-user` | The user closed the popup before completing the sign-in. | User cancelled; simply click the button again and complete the Google prompt. |
+| `auth/cancelled-popup-request` | Another popup request was triggered before the previous one finished. | Wait a moment or refresh the page before clicking the Google button again. |
+| `auth/configuration-not-found` | Google provider is not enabled in Firebase. | Go to Firebase Console → Authentication → Sign-in method → Enable "Google" provider. |
+| Popup blocked | Browser security settings blocked popup window. | Look for the popup blocker icon in your browser address bar and choose "Always allow popups for this site". |
+
+---
+
 ## ⚡ Free-Tier Optimizations & Troubleshooting
 
 ### 1. Render Free Tier "Cold Start" (Spin-Down Delay)
@@ -417,7 +593,8 @@ All API routes are prefixed with `/api/v1`.
 |---|---|---|---|---|
 | **System** | `GET` | `/health` | Public | System uptime & database connection status |
 | **Auth** | `POST` | `/auth/login` | Public | User authentication & JWT issuance |
-| **Auth** | `POST` | `/auth/register` | Public | Student account registration |
+| **Auth** | `POST` | `/auth/register-student` | Public | Student account registration |
+| **Auth** | `POST` | `/auth/google` | Public | Firebase Google sign-in & instant account creation |
 | **Auth** | `GET` | `/auth/me` | Authenticated | Fetch authenticated user profile |
 | **Students** | `GET` | `/students/profile` | Student | Get current student profile |
 | **Students** | `PUT` | `/students/profile` | Student | Update student academic & skill details |

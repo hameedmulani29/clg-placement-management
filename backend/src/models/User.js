@@ -15,6 +15,9 @@ class User extends BaseModel {
     if (this.isActive === undefined) {
       this.isActive = true;
     }
+    if (this.authProvider === undefined) {
+      this.authProvider = 'local';
+    }
   }
 
   async save() {

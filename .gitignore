@@ -47,5 +47,14 @@ backend/uploads/
 *.db-wal
 *.db-shm
 
+# Firebase Service Account Credentials (NEVER commit secrets!)
+*serviceAccount*.json
+*firebase*.json
+*adminsdk*.json
+
+# Documentation
+/docs/
+docs/
+
 # Markdown documentation files
 *.md

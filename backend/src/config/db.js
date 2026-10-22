@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS users (
   password TEXT NOT NULL,
   role TEXT NOT NULL CHECK(role IN ('student', 'admin', 'recruiter')),
   collegeName TEXT DEFAULT 'COEP Technological University',
+  googleId TEXT DEFAULT NULL,
+  avatarUrl TEXT DEFAULT NULL,
+  authProvider TEXT DEFAULT 'local',
   isActive INTEGER NOT NULL DEFAULT 1,
   createdAt TEXT NOT NULL,
   updatedAt TEXT NOT NULL
@@ -309,6 +312,9 @@ const runSQLiteMigrations = (dbInstance) => {
   if (!dbInstance) return;
   const migrations = [
     "ALTER TABLE users ADD COLUMN collegeName TEXT DEFAULT 'COEP Technological University';",
+    "ALTER TABLE users ADD COLUMN googleId TEXT DEFAULT NULL;",
+    "ALTER TABLE users ADD COLUMN avatarUrl TEXT DEFAULT NULL;",
+    "ALTER TABLE users ADD COLUMN authProvider TEXT DEFAULT 'local';",
     "ALTER TABLE student_profiles ADD COLUMN collegeName TEXT DEFAULT 'COEP Technological University';",
     "ALTER TABLE placement_drives ADD COLUMN collegeSpecificCriteria TEXT DEFAULT '[]';",
     "ALTER TABLE audit_logs ADD COLUMN updatedAt TEXT DEFAULT '';",

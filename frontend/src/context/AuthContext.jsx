@@ -1,5 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
+import {
+  signInWithGooglePopup,
+  firebaseSignOut,
+  isFirebaseConfigured,
+} from '../config/firebase';
 
 const AuthContext = createContext(null);
 
@@ -58,6 +63,27 @@ export const AuthProvider = ({ children }) => {
     return { success: false, message: res.data.message };
   };
 
+  const loginWithGoogle = async (extraData = {}) => {
+    const { idToken } = await signInWithGooglePopup();
+    const res = await api.post('/auth/google', {
+      idToken,
+      ...extraData,
+    });
+    if (res.data.success) {
+      const { token: newToken, user: newUser, profile: newProfile, isNewUser } = res.data.data;
+      setToken(newToken);
+      setUser(newUser);
+      setProfile(newProfile);
+      localStorage.setItem('token', newToken);
+      localStorage.setItem('user', JSON.stringify(newUser));
+      if (newProfile) {
+        localStorage.setItem('profile', JSON.stringify(newProfile));
+      }
+      return { success: true, role: newUser.role, isNewUser };
+    }
+    return { success: false, message: res.data.message };
+  };
+
   const registerStudent = async (studentData) => {
     const res = await api.post('/auth/register-student', studentData);
     if (res.data.success) {
@@ -80,6 +106,7 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setUser(null);
     setProfile(null);
+    firebaseSignOut();
   };
 
   const refreshProfile = async () => {
@@ -106,7 +133,9 @@ export const AuthProvider = ({ children }) => {
         token,
         loading,
         isAuthenticated: !!token && !!user,
+        isFirebaseConfigured: isFirebaseConfigured(),
         login,
+        loginWithGoogle,
         registerStudent,
         logout,
         refreshProfile,

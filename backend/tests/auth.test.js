@@ -119,6 +119,72 @@ describe('Authentication & RBAC Integration Tests (Phase 2)', () => {
     expect(res.body.message).toMatch(/access denied/i);
   });
 
+  test('POST /api/v1/auth/google should reject request missing idToken', async () => {
+    const res = await request(app)
+      .post('/api/v1/auth/google')
+      .send({});
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toMatch(/Firebase ID token is required/i);
+  });
+
+  test('POST /api/v1/auth/google should register and authenticate new user via Google token', async () => {
+    const payload = Buffer.from(
+      JSON.stringify({
+        email: 'priya.patil@college.edu',
+        name: 'Priya Patil',
+        picture: 'https://lh3.googleusercontent.com/a/sample',
+        uid: 'google_user_test_9988',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        email_verified: true,
+      })
+    ).toString('base64');
+    const mockToken = `eyJhbGciOiJSUzI1NiJ9.${payload}.signature`;
+
+    const res = await request(app)
+      .post('/api/v1/auth/google')
+      .send({
+        idToken: mockToken,
+        role: 'student',
+        department: 'Information Technology',
+        graduationYear: 2026,
+      });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.token).toBeDefined();
+    expect(res.body.data.user.email).toBe('priya.patil@college.edu');
+    expect(res.body.data.user.role).toBe('student');
+    expect(res.body.data.profile.firstName).toBe('Priya');
+    expect(res.body.data.profile.lastName).toBe('Patil');
+    expect(res.body.data.isNewUser).toBe(true);
+  });
+
+  test('POST /api/v1/auth/google should log in existing user via Google token', async () => {
+    const payload = Buffer.from(
+      JSON.stringify({
+        email: 'priya.patil@college.edu',
+        name: 'Priya Patil',
+        uid: 'google_user_test_9988',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      })
+    ).toString('base64');
+    const mockToken = `eyJhbGciOiJSUzI1NiJ9.${payload}.signature`;
+
+    const res = await request(app)
+      .post('/api/v1/auth/google')
+      .send({
+        idToken: mockToken,
+      });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.token).toBeDefined();
+    expect(res.body.data.user.email).toBe('priya.patil@college.edu');
+    expect(res.body.data.isNewUser).toBe(false);
+  });
+
   test('GET /api/v1/health should return system status healthy', async () => {
     const res = await request(app).get('/api/v1/health');
 

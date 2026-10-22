@@ -4,6 +4,7 @@ const {
   registerStudent,
   registerRecruiter,
   login,
+  googleAuth,
   getMe,
   logout,
 } = require('../controllers/authController');
@@ -14,6 +15,8 @@ const { authRateLimiter } = require('../middleware/rateLimiter');
 router.post('/register-student', authRateLimiter, registerStudent);
 router.post('/register-recruiter', authRateLimiter, registerRecruiter);
 router.post('/login', authRateLimiter, login);
+router.post('/google', authRateLimiter, googleAuth);
+router.post('/firebase-google', authRateLimiter, googleAuth);
 
 // Authenticated session routes
 router.get('/me', authenticateToken, getMe);

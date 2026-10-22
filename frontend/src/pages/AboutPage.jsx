@@ -34,7 +34,7 @@ const AboutPage = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 2.5rem',
+          padding: '0 clamp(1rem, 3vw, 2.5rem)',
           position: 'sticky',
           top: 0,
           zIndex: 40,
@@ -87,7 +87,7 @@ const AboutPage = () => {
           </span>
         </Link>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <Link to="/" className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', gap: '0.4rem' }}>
             <ArrowLeft size={14} /> Back to Home
           </Link>
@@ -114,7 +114,7 @@ const AboutPage = () => {
       </nav>
 
       {/* Main Content Container */}
-      <main style={{ maxWidth: '960px', margin: '0 auto', padding: '4rem 1.5rem', width: '100%', flex: 1 }}>
+      <main style={{ maxWidth: '960px', margin: '0 auto', padding: 'clamp(2rem, 4vw, 4rem) clamp(1rem, 3vw, 1.5rem)', width: '100%', flex: 1 }}>
         {/* Header Hero */}
         <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
           <div
@@ -136,7 +136,7 @@ const AboutPage = () => {
 
           <h1
             style={{
-              fontSize: 'clamp(2.2rem, 4.5vw, 3.25rem)',
+              fontSize: 'clamp(2rem, 4.5vw, 3.25rem)',
               fontFamily: 'var(--font-family-display)',
               fontWeight: 'var(--font-weight-extrabold)',
               color: 'var(--text-primary)',
@@ -154,7 +154,7 @@ const AboutPage = () => {
         </div>
 
         {/* What PlaceCloud Is */}
-        <section className="card" style={{ padding: '2.5rem', marginBottom: '2.5rem', boxShadow: 'var(--shadow-md)' }}>
+        <section className="card" style={{ padding: 'clamp(1.25rem, 3vw, 2.5rem)', marginBottom: '2.5rem', boxShadow: 'var(--shadow-md)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', color: 'var(--primary)', marginBottom: '1rem' }}>
             <Sparkles size={20} />
             <h2 style={{ fontSize: '1.35rem', fontWeight: 'var(--font-weight-bold)' }}>What is PlaceCloud?</h2>
@@ -168,7 +168,7 @@ const AboutPage = () => {
         </section>
 
         {/* The Problem We Solve */}
-        <section className="card" style={{ padding: '2.5rem', marginBottom: '2.5rem', boxShadow: 'var(--shadow-md)' }}>
+        <section className="card" style={{ padding: 'clamp(1.25rem, 3vw, 2.5rem)', marginBottom: '2.5rem', boxShadow: 'var(--shadow-md)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', color: 'var(--danger)', marginBottom: '1rem' }}>
             <Target size={20} />
             <h2 style={{ fontSize: '1.35rem', fontWeight: 'var(--font-weight-bold)' }}>The Problem We Solve</h2>

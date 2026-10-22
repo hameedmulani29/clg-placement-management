@@ -34,12 +34,15 @@ import {
   AlertCircle,
   FileSpreadsheet,
   Zap,
+  Menu,
+  X,
 } from 'lucide-react';
 
 const LandingPage = () => {
   const { resolvedTheme, toggleTheme } = useTheme();
   const [selectedRole, setSelectedRole] = useState('students');
   const [activeWorkflowStep, setActiveWorkflowStep] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const workflowSteps = [
     {
@@ -75,25 +78,9 @@ const LandingPage = () => {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-canvas)', color: 'var(--text-primary)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-canvas)', color: 'var(--text-primary)', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
       {/* Top Navigation */}
-      <nav
-        style={{
-          height: 'var(--navbar-height)',
-          borderBottom: '1px solid var(--border-default)',
-          backgroundColor: 'var(--bg-surface)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 2.5rem',
-          position: 'sticky',
-          top: 0,
-          zIndex: 40,
-          backdropFilter: 'blur(12px)',
-        }}
-        role="navigation"
-        aria-label="Main navigation"
-      >
+      <nav className="landing-navbar" role="navigation" aria-label="Main navigation">
         <Link
           to="/"
           style={{
@@ -105,6 +92,7 @@ const LandingPage = () => {
             fontSize: 'var(--text-lg)',
             textDecoration: 'none',
           }}
+          onClick={() => setMobileMenuOpen(false)}
         >
           <div
             style={{
@@ -138,8 +126,8 @@ const LandingPage = () => {
           </span>
         </Link>
 
-        {/* Center Nav Links */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+        {/* Center Nav Links (Desktop) */}
+        <div className="landing-desktop-links">
           <a
             href="#how-it-works"
             style={{
@@ -208,8 +196,8 @@ const LandingPage = () => {
           </Link>
         </div>
 
-        {/* Action Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+        {/* Action Controls (Desktop) */}
+        <div className="landing-desktop-actions">
           <button
             type="button"
             onClick={toggleTheme}
@@ -232,15 +220,128 @@ const LandingPage = () => {
             Student Intake <ArrowRight size={14} />
           </Link>
         </div>
+
+        {/* Mobile Toggle Controls (Theme + Hamburger Menu) */}
+        <div className="landing-mobile-toggle">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="btn btn-secondary btn-sm"
+            style={{
+              padding: '0.45rem',
+              borderRadius: 'var(--radius-full)',
+              width: '36px',
+              height: '36px',
+            }}
+            aria-label="Toggle visual theme"
+          >
+            {resolvedTheme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="btn btn-secondary btn-sm"
+            style={{
+              padding: '0.45rem',
+              borderRadius: 'var(--radius-sm)',
+              width: '38px',
+              height: '38px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={mobileMenuOpen}
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </nav>
+
+      {/* Mobile Navigation Drawer */}
+      {mobileMenuOpen && (
+        <div className="landing-mobile-drawer" role="dialog" aria-modal="true" aria-label="Mobile Navigation">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+            <a
+              href="#how-it-works"
+              className="landing-mobile-link"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <span>How It Works</span>
+              <ChevronRight size={16} />
+            </a>
+            <a
+              href="#value-matrix"
+              className="landing-mobile-link"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <span>Value Matrix</span>
+              <ChevronRight size={16} />
+            </a>
+            <a
+              href="#stakeholders"
+              className="landing-mobile-link"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <span>Roles & Value</span>
+              <ChevronRight size={16} />
+            </a>
+            <a
+              href="#analytics-visibility"
+              className="landing-mobile-link"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <span>Analytics</span>
+              <ChevronRight size={16} />
+            </a>
+            <a
+              href="#trust-security"
+              className="landing-mobile-link"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <span>Trust & Security</span>
+              <ChevronRight size={16} />
+            </a>
+            <Link
+              to="/about"
+              className="landing-mobile-link"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <span>About PlaceCloud</span>
+              <ChevronRight size={16} />
+            </Link>
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <Link
+              to="/login"
+              className="btn btn-secondary btn-lg"
+              style={{ width: '100%', justifyContent: 'center' }}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Sign In to Portal
+            </Link>
+            <Link
+              to="/register-student"
+              className="btn btn-primary btn-lg"
+              style={{ width: '100%', justifyContent: 'center' }}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Student Intake <ArrowRight size={16} />
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Hero Section */}
       <section
         style={{
           position: 'relative',
-          padding: '5.5rem 1.5rem 4rem',
+          padding: 'clamp(3rem, 6vw, 5.5rem) clamp(1rem, 3vw, 1.5rem) 3.5rem',
           textAlign: 'center',
           overflow: 'hidden',
+          width: '100%',
         }}
       >
         <div className="hero-ambient-glow" />
@@ -375,35 +476,35 @@ const LandingPage = () => {
               </div>
 
               {/* Window Body: Recruiter & Student Pipeline Simulation */}
-              <div style={{ padding: '1.75rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-                  <div style={{ padding: '1rem', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ padding: 'clamp(1rem, 3vw, 1.75rem)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '0.85rem', marginBottom: '1.5rem' }}>
+                  <div style={{ padding: '0.85rem 1rem', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' }}>
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 'var(--font-weight-medium)' }}>Total Registered Students</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginTop: '0.2rem' }}>1,248</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginTop: '0.2rem' }}>1,248</div>
                   </div>
-                  <div style={{ padding: '1rem', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ padding: '0.85rem 1rem', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' }}>
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 'var(--font-weight-medium)' }}>Active Campus Drives</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--primary)', marginTop: '0.2rem' }}>18 Drives</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--primary)', marginTop: '0.2rem' }}>18 Drives</div>
                   </div>
-                  <div style={{ padding: '1rem', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ padding: '0.85rem 1rem', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' }}>
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 'var(--font-weight-medium)' }}>Batch Placement Rate</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--success)', marginTop: '0.2rem' }}>96.4%</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--success)', marginTop: '0.2rem' }}>96.4%</div>
                   </div>
-                  <div style={{ padding: '1rem', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ padding: '0.85rem 1rem', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' }}>
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 'var(--font-weight-medium)' }}>Average Compensation</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--warning)', marginTop: '0.2rem' }}>14.2 LPA</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--warning)', marginTop: '0.2rem' }}>14.2 LPA</div>
                   </div>
                 </div>
 
                 {/* Simulated Pipeline Stages Bar */}
-                <div style={{ backgroundColor: 'var(--bg-surface)', padding: '1rem 1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                <div style={{ backgroundColor: 'var(--bg-surface)', padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.35rem' }}>
                     <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)', textTransform: 'uppercase' }}>
-                      Real-Time Applicant Pipeline (Amazon Campus Drive)
+                      Real-Time Applicant Pipeline (Amazon Drive)
                     </span>
                     <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>412 Applicants Screened</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem' }}>
+                  <div className="hero-pipeline-grid">
                     <div style={{ padding: '0.5rem', backgroundColor: 'var(--bg-surface-subtle)', borderRadius: 'var(--radius-xs)', textAlign: 'center' }}>
                       <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Applied</div>
                       <div style={{ fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>412</div>
@@ -436,7 +537,7 @@ const LandingPage = () => {
       <section
         id="value-matrix"
         style={{
-          padding: '5rem 1.5rem',
+          padding: 'clamp(2.5rem, 5vw, 5rem) clamp(1rem, 3vw, 1.5rem)',
           backgroundColor: 'var(--bg-surface-subtle)',
           borderTop: '1px solid var(--border-default)',
           borderBottom: '1px solid var(--border-default)',
@@ -447,7 +548,7 @@ const LandingPage = () => {
             <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-bold)', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               The Operational Transformation
             </span>
-            <h2 style={{ fontSize: '2.25rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginTop: '0.35rem' }}>
+            <h2 style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.25rem)', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginTop: '0.35rem' }}>
               Why Premier Institutions Switch to PlaceCloud
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-base)', maxWidth: '640px', margin: '0.5rem auto 0' }}>
@@ -455,7 +556,7 @@ const LandingPage = () => {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '1.5rem' }}>
             {/* The Old Way: Fragmented */}
             <div className="comparison-card comparison-card-before">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--danger)', marginBottom: '1.25rem' }}>
@@ -516,13 +617,13 @@ const LandingPage = () => {
       </section>
 
       {/* How PlaceCloud Works */}
-      <section id="how-it-works" style={{ padding: '5rem 1.5rem', backgroundColor: 'var(--bg-surface)' }}>
+      <section id="how-it-works" style={{ padding: 'clamp(2.5rem, 5vw, 5rem) clamp(1rem, 3vw, 1.5rem)', backgroundColor: 'var(--bg-surface)' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
             <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-bold)', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Execution Lifecycle
             </span>
-            <h2 style={{ fontSize: '2.25rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginTop: '0.35rem' }}>
+            <h2 style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.25rem)', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginTop: '0.35rem' }}>
               How PlaceCloud Orchestrates Campus Drives
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-base)', maxWidth: '600px', margin: '0.5rem auto 0' }}>
@@ -530,13 +631,13 @@ const LandingPage = () => {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '1.5rem' }}>
             {workflowSteps.map((step, idx) => (
               <div
                 key={idx}
                 className="card"
                 style={{
-                  padding: '1.75rem',
+                  padding: 'clamp(1.25rem, 3vw, 1.75rem)',
                   display: 'flex',
                   flexDirection: 'column',
                   borderTop: idx === activeWorkflowStep ? '3px solid var(--primary)' : '1px solid var(--border-default)',
@@ -569,7 +670,7 @@ const LandingPage = () => {
       <section
         id="stakeholders"
         style={{
-          padding: '5rem 1.5rem',
+          padding: 'clamp(2.5rem, 5vw, 5rem) clamp(1rem, 3vw, 1.5rem)',
           backgroundColor: 'var(--bg-surface-subtle)',
           borderTop: '1px solid var(--border-default)',
           borderBottom: '1px solid var(--border-default)',
@@ -580,7 +681,7 @@ const LandingPage = () => {
             <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-bold)', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Unified Multi-Stakeholder Ecosystem
             </span>
-            <h2 style={{ fontSize: '2.25rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginTop: '0.35rem' }}>
+            <h2 style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.25rem)', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginTop: '0.35rem' }}>
               Built Specifically for Each Placement Persona
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-base)', maxWidth: '600px', margin: '0.5rem auto 0' }}>
@@ -617,14 +718,14 @@ const LandingPage = () => {
           </div>
 
           {/* Role Presentation Card */}
-          <div className="card" style={{ padding: '2.75rem', boxShadow: 'var(--shadow-lg)' }}>
+          <div className="card" style={{ padding: 'clamp(1.25rem, 4vw, 2.75rem)', boxShadow: 'var(--shadow-lg)' }}>
             {selectedRole === 'students' && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2.5rem', alignItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '2rem', alignItems: 'center' }}>
                 <div>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--primary)', fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
                     <Sparkles size={14} /> Candidate Empowerment
                   </div>
-                  <h3 style={{ fontSize: '1.75rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginBottom: '1rem', lineHeight: 1.25 }}>
+                  <h3 style={{ fontSize: 'clamp(1.35rem, 2.5vw, 1.75rem)', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginBottom: '1rem', lineHeight: 1.25 }}>
                     Never Miss an Opportunity. Stay in Total Control of Your Placement Journey.
                   </h3>
                   <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-base)', lineHeight: 1.6, marginBottom: '1.75rem' }}>
@@ -683,12 +784,12 @@ const LandingPage = () => {
             )}
 
             {selectedRole === 'recruiters' && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2.5rem', alignItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '2rem', alignItems: 'center' }}>
                 <div>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--primary)', fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
                     <Briefcase size={14} /> Corporate Recruiter Workspace
                   </div>
-                  <h3 style={{ fontSize: '1.75rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginBottom: '1rem', lineHeight: 1.25 }}>
+                  <h3 style={{ fontSize: 'clamp(1.35rem, 2.5vw, 1.75rem)', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginBottom: '1rem', lineHeight: 1.25 }}>
                     Screen Faster. Collaborate with Evaluation Rubrics. Release Offers.
                   </h3>
                   <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-base)', lineHeight: 1.6, marginBottom: '1.75rem' }}>
@@ -715,13 +816,13 @@ const LandingPage = () => {
                   </div>
                 </div>
 
-                <div style={{ backgroundColor: 'var(--bg-surface-subtle)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: '1.5rem' }}>
+                <div style={{ backgroundColor: 'var(--bg-surface-subtle)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: 'clamp(1rem, 3vw, 1.5rem)' }}>
                   <div style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '1rem' }}>
                     Recruiter Candidate Evaluation Matrix
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <div style={{ padding: '0.85rem', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                         <div>
                           <div style={{ fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--text-sm)' }}>Aarav Singhania</div>
                           <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>B.Tech CS • CGPA: 9.24 • React, AWS, Node</div>
@@ -735,7 +836,7 @@ const LandingPage = () => {
                       </div>
                     </div>
                     <div style={{ padding: '0.85rem', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                         <div>
                           <div style={{ fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--text-sm)' }}>Priya Venkatesh</div>
                           <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>B.Tech IT • CGPA: 8.85 • Python, SQL, Docker</div>
@@ -752,12 +853,12 @@ const LandingPage = () => {
             )}
 
             {selectedRole === 'tpo' && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2.5rem', alignItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '2rem', alignItems: 'center' }}>
                 <div>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--primary)', fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
                     <Building size={14} /> Placement Leadership & TPO Cell
                   </div>
-                  <h3 style={{ fontSize: '1.75rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginBottom: '1rem', lineHeight: 1.25 }}>
+                  <h3 style={{ fontSize: 'clamp(1.35rem, 2.5vw, 1.75rem)', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginBottom: '1rem', lineHeight: 1.25 }}>
                     Complete Operational Command Over Campus Placements.
                   </h3>
                   <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-base)', lineHeight: 1.6, marginBottom: '1.75rem' }}>
@@ -784,11 +885,11 @@ const LandingPage = () => {
                   </div>
                 </div>
 
-                <div style={{ backgroundColor: 'var(--bg-surface-subtle)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: '1.5rem' }}>
+                <div style={{ backgroundColor: 'var(--bg-surface-subtle)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: 'clamp(1rem, 3vw, 1.5rem)' }}>
                   <div style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '1rem' }}>
                     TPO Operational Dashboard Snapshot
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
                     <div style={{ padding: '0.85rem', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' }}>
                       <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Offers Accepted</div>
                       <div style={{ fontSize: '1.25rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--success)' }}>428 Offers</div>
@@ -815,7 +916,7 @@ const LandingPage = () => {
       </section>
 
       {/* Simulated Demo Performance Metrics Bar */}
-      <section style={{ padding: '4.5rem 1.5rem', backgroundColor: 'var(--bg-surface)' }}>
+      <section style={{ padding: 'clamp(2.5rem, 5vw, 4.5rem) clamp(1rem, 3vw, 1.5rem)', backgroundColor: 'var(--bg-surface)' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
             <span style={{ fontSize: '0.7rem', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -826,12 +927,12 @@ const LandingPage = () => {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-              gap: '1.5rem',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',
+              gap: '1.25rem',
             }}
           >
-            <div className="card" style={{ padding: '1.5rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '2.25rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--primary)', fontFamily: 'var(--font-family-display)' }}>
+            <div className="card" style={{ padding: 'clamp(1rem, 3vw, 1.5rem)', textAlign: 'center' }}>
+              <div style={{ fontSize: 'clamp(1.75rem, 3vw, 2.25rem)', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--primary)', fontFamily: 'var(--font-family-display)' }}>
                 96.4%
               </div>
               <div style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '0.35rem' }}>
@@ -839,8 +940,8 @@ const LandingPage = () => {
               </div>
             </div>
 
-            <div className="card" style={{ padding: '1.5rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '2.25rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--success)', fontFamily: 'var(--font-family-display)' }}>
+            <div className="card" style={{ padding: 'clamp(1rem, 3vw, 1.5rem)', textAlign: 'center' }}>
+              <div style={{ fontSize: 'clamp(1.75rem, 3vw, 2.25rem)', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--success)', fontFamily: 'var(--font-family-display)' }}>
                 44.5 LPA
               </div>
               <div style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '0.35rem' }}>
@@ -848,8 +949,8 @@ const LandingPage = () => {
               </div>
             </div>
 
-            <div className="card" style={{ padding: '1.5rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '2.25rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--info)', fontFamily: 'var(--font-family-display)' }}>
+            <div className="card" style={{ padding: 'clamp(1rem, 3vw, 1.5rem)', textAlign: 'center' }}>
+              <div style={{ fontSize: 'clamp(1.75rem, 3vw, 2.25rem)', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--info)', fontFamily: 'var(--font-family-display)' }}>
                 150+
               </div>
               <div style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '0.35rem' }}>
@@ -857,8 +958,8 @@ const LandingPage = () => {
               </div>
             </div>
 
-            <div className="card" style={{ padding: '1.5rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '2.25rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--warning)', fontFamily: 'var(--font-family-display)' }}>
+            <div className="card" style={{ padding: 'clamp(1rem, 3vw, 1.5rem)', textAlign: 'center' }}>
+              <div style={{ fontSize: 'clamp(1.75rem, 3vw, 2.25rem)', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--warning)', fontFamily: 'var(--font-family-display)' }}>
                 0 ms
               </div>
               <div style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '0.35rem' }}>
@@ -866,8 +967,8 @@ const LandingPage = () => {
               </div>
             </div>
 
-            <div className="card" style={{ padding: '1.5rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '2.25rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--accent)', fontFamily: 'var(--font-family-display)' }}>
+            <div className="card" style={{ padding: 'clamp(1rem, 3vw, 1.5rem)', textAlign: 'center' }}>
+              <div style={{ fontSize: 'clamp(1.75rem, 3vw, 2.25rem)', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--accent)', fontFamily: 'var(--font-family-display)' }}>
                 12,000+
               </div>
               <div style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '0.35rem' }}>
@@ -882,7 +983,7 @@ const LandingPage = () => {
       <section
         id="analytics-visibility"
         style={{
-          padding: '5rem 1.5rem',
+          padding: 'clamp(2.5rem, 5vw, 5rem) clamp(1rem, 3vw, 1.5rem)',
           backgroundColor: 'var(--bg-surface-subtle)',
           borderTop: '1px solid var(--border-default)',
           borderBottom: '1px solid var(--border-default)',
@@ -893,7 +994,7 @@ const LandingPage = () => {
             <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-bold)', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Operational Intelligence
             </span>
-            <h2 style={{ fontSize: '2.25rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginTop: '0.35rem' }}>
+            <h2 style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.25rem)', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginTop: '0.35rem' }}>
               Real-Time Placement Intelligence & Accreditation Visibility
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-base)', maxWidth: '640px', margin: '0.5rem auto 0' }}>
@@ -901,9 +1002,9 @@ const LandingPage = () => {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
-            <div className="card" style={{ padding: '2rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '2rem' }}>
+            <div className="card" style={{ padding: 'clamp(1.25rem, 3vw, 2rem)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <h3 style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)' }}>
                   Department Placement Breakdown
                 </h3>
@@ -949,8 +1050,8 @@ const LandingPage = () => {
               </div>
             </div>
 
-            <div className="card" style={{ padding: '2rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+            <div className="card" style={{ padding: 'clamp(1.25rem, 3vw, 2rem)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <h3 style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-primary)' }}>
                   Compensation Tier Distribution (LPA)
                 </h3>
@@ -1000,13 +1101,13 @@ const LandingPage = () => {
       </section>
 
       {/* Security & Institutional Trust (Product-Oriented) */}
-      <section id="trust-security" style={{ padding: '5rem 1.5rem', backgroundColor: 'var(--bg-surface)' }}>
+      <section id="trust-security" style={{ padding: 'clamp(2.5rem, 5vw, 5rem) clamp(1rem, 3vw, 1.5rem)', backgroundColor: 'var(--bg-surface)' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
             <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-bold)', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Institutional Trust & Privacy
             </span>
-            <h2 style={{ fontSize: '2.25rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginTop: '0.35rem' }}>
+            <h2 style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.25rem)', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', marginTop: '0.35rem' }}>
               Enterprise-Grade Security by Design
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-base)', maxWidth: '600px', margin: '0.5rem auto 0' }}>
@@ -1014,8 +1115,8 @@ const LandingPage = () => {
             </p>
           </div>
 
-          <div className="grid-cols-4" style={{ gap: '1.5rem' }}>
-            <div className="card" style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column' }}>
+          <div className="grid-cols-4" style={{ gap: '1.25rem' }}>
+            <div className="card" style={{ padding: 'clamp(1.25rem, 3vw, 1.75rem)', display: 'flex', flexDirection: 'column' }}>
               <div
                 style={{
                   width: '46px',
@@ -1039,7 +1140,7 @@ const LandingPage = () => {
               </p>
             </div>
 
-            <div className="card" style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column' }}>
+            <div className="card" style={{ padding: 'clamp(1.25rem, 3vw, 1.75rem)', display: 'flex', flexDirection: 'column' }}>
               <div
                 style={{
                   width: '46px',
@@ -1063,7 +1164,7 @@ const LandingPage = () => {
               </p>
             </div>
 
-            <div className="card" style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column' }}>
+            <div className="card" style={{ padding: 'clamp(1.25rem, 3vw, 1.75rem)', display: 'flex', flexDirection: 'column' }}>
               <div
                 style={{
                   width: '46px',
@@ -1087,7 +1188,7 @@ const LandingPage = () => {
               </p>
             </div>
 
-            <div className="card" style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column' }}>
+            <div className="card" style={{ padding: 'clamp(1.25rem, 3vw, 1.75rem)', display: 'flex', flexDirection: 'column' }}>
               <div
                 style={{
                   width: '46px',
@@ -1115,14 +1216,14 @@ const LandingPage = () => {
       </section>
 
       {/* Enterprise Hiring Partners Ticker */}
-      <section style={{ padding: '3.5rem 1.5rem', textAlign: 'center', backgroundColor: 'var(--bg-surface-subtle)', borderTop: '1px solid var(--border-default)' }}>
+      <section style={{ padding: 'clamp(2rem, 4vw, 3.5rem) clamp(1rem, 3vw, 1.5rem)', textAlign: 'center', backgroundColor: 'var(--bg-surface-subtle)', borderTop: '1px solid var(--border-default)' }}>
         <div style={{ maxWidth: '960px', margin: '0 auto' }}>
           <div style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '1.5rem' }}>
             Trusted by Campus Hiring Teams Across Top Tech & Engineering Enterprises
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2.5rem', flexWrap: 'wrap', opacity: 0.85 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'clamp(1.25rem, 3vw, 2.5rem)', flexWrap: 'wrap', opacity: 0.85 }}>
             {['Google Cloud', 'Microsoft Azure', 'Amazon Web Services', 'Infosys Tech', 'Cisco Systems', 'Oracle Cloud'].map((corp, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--text-base)', color: 'var(--text-secondary)' }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
                 <Building2 size={18} style={{ color: 'var(--primary)' }} />
                 <span>{corp}</span>
               </div>
@@ -1132,12 +1233,12 @@ const LandingPage = () => {
       </section>
 
       {/* High-Converting Final Call to Action */}
-      <section style={{ padding: '6rem 1.5rem', backgroundColor: 'var(--bg-canvas)' }}>
+      <section style={{ padding: 'clamp(3rem, 6vw, 6rem) clamp(1rem, 3vw, 1.5rem)', backgroundColor: 'var(--bg-canvas)' }}>
         <div
           style={{
             maxWidth: '1000px',
             margin: '0 auto',
-            padding: '4rem 2.5rem',
+            padding: 'clamp(2.5rem, 5vw, 4rem) clamp(1.25rem, 4vw, 2.5rem)',
             backgroundColor: 'var(--bg-surface-elevated)',
             border: '1px solid var(--border-default)',
             borderRadius: 'var(--radius-xl)',
@@ -1166,7 +1267,7 @@ const LandingPage = () => {
             </span>
             <h2
               style={{
-                fontSize: 'clamp(2rem, 4vw, 3rem)',
+                fontSize: 'clamp(1.75rem, 4vw, 3rem)',
                 fontFamily: 'var(--font-family-display)',
                 fontWeight: 'var(--font-weight-extrabold)',
                 color: 'var(--text-primary)',
@@ -1190,10 +1291,10 @@ const LandingPage = () => {
             </p>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-              <Link to="/login" className="btn btn-primary btn-lg" style={{ padding: '0.85rem 2.5rem' }}>
+              <Link to="/login" className="btn btn-primary btn-lg" style={{ padding: '0.85rem clamp(1.5rem, 3vw, 2.5rem)' }}>
                 Sign In to Platform <ArrowRight size={18} />
               </Link>
-              <Link to="/register-student" className="btn btn-secondary btn-lg" style={{ padding: '0.85rem 2rem' }}>
+              <Link to="/register-student" className="btn btn-secondary btn-lg" style={{ padding: '0.85rem clamp(1.25rem, 2.5vw, 2rem)' }}>
                 Register as Student
               </Link>
             </div>
@@ -1205,7 +1306,7 @@ const LandingPage = () => {
       <footer
         style={{
           marginTop: 'auto',
-          padding: '4rem 2rem 2.5rem',
+          padding: 'clamp(2.5rem, 5vw, 4rem) clamp(1rem, 3vw, 2rem) 2.5rem',
           borderTop: '1px solid var(--border-default)',
           backgroundColor: 'var(--bg-surface)',
           color: 'var(--text-secondary)',
@@ -1213,7 +1314,7 @@ const LandingPage = () => {
         }}
       >
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2.5rem', marginBottom: '3.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '2rem', marginBottom: '3rem' }}>
             {/* Brand Column */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', fontWeight: 'var(--font-weight-extrabold)', color: 'var(--text-primary)', fontSize: 'var(--text-md)', marginBottom: '0.75rem' }}>
@@ -1286,7 +1387,7 @@ const LandingPage = () => {
             <div>
               © 2026 PlaceCloud. Production-Ready Enterprise Placement Platform. All rights reserved.
             </div>
-            <div style={{ display: 'flex', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
               <Link to="/about" style={{ color: 'var(--text-muted)' }}>About PlaceCloud</Link>
               <Link to="/login" style={{ color: 'var(--text-muted)' }}>Portal</Link>
               <Link to="/register-student" style={{ color: 'var(--text-muted)' }}>Student Intake</Link>

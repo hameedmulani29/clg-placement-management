@@ -205,7 +205,7 @@ const RegisterStudentPage = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 2rem',
+          padding: '0 clamp(0.75rem, 3vw, 2rem)',
           position: 'relative',
           zIndex: 10,
           borderBottom: '1px solid var(--border-subtle)',
@@ -308,7 +308,7 @@ const RegisterStudentPage = () => {
           </div>
 
           {/* Form Card */}
-          <div className="card" style={{ padding: '2.75rem', boxShadow: 'var(--shadow-xl)' }}>
+          <div className="card" style={{ padding: 'clamp(1.25rem, 4vw, 2.75rem)', boxShadow: 'var(--shadow-xl)' }}>
             {error && (
               <div
                 style={{

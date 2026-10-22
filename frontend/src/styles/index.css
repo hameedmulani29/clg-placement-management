@@ -13,6 +13,9 @@ html {
   font-size: 16px;
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
 }
 
 body {
@@ -23,7 +26,18 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  position: relative;
   transition: background-color var(--duration-normal) var(--ease-in-out), color var(--duration-normal) var(--ease-in-out);
+}
+
+#root {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  min-height: 100vh;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -866,6 +880,100 @@ tbody tr:hover {
    Comprehensive Cross-Device Responsive System
    ========================================================================== */
 
+/* Public SaaS Landing & Public Pages Responsive Nav */
+.landing-navbar {
+  height: var(--navbar-height);
+  border-bottom: 1px solid var(--border-default);
+  background-color: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  backdrop-filter: blur(12px);
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
+}
+
+.landing-desktop-links {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.landing-desktop-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.landing-mobile-toggle {
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.landing-mobile-drawer {
+  position: fixed;
+  top: var(--navbar-height);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--bg-surface);
+  z-index: 50;
+  padding: 1.25rem 1rem 2.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  border-bottom: 1px solid var(--border-default);
+  box-shadow: var(--shadow-xl);
+  animation: drawer-slide-down 0.2s var(--ease-out);
+}
+
+@keyframes drawer-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.landing-mobile-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-base);
+  text-decoration: none;
+  background-color: var(--bg-surface-subtle);
+  border: 1px solid var(--border-default);
+  transition: all var(--duration-fast);
+}
+
+.landing-mobile-link:hover,
+.landing-mobile-link:active {
+  background-color: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.hero-pipeline-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.5rem;
+  width: 100%;
+}
+
 /* Navbar responsive user elements */
 .navbar-user-text {
   display: none;
@@ -877,10 +985,37 @@ tbody tr:hover {
   display: none !important;
 }
 
+/* Large Tablets / Small Laptops (max-width: 1024px) */
+@media (max-width: 1024px) {
+  .grid-cols-4 {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+  .hero-float-left,
+  .hero-float-right {
+    display: none !important;
+  }
+}
+
 /* Tablet & Mobile Breakpoints (max-width: 900px) */
 @media (max-width: 900px) {
   .sidebar-close-btn {
     display: inline-flex !important;
+  }
+  .landing-navbar {
+    padding: 0 1rem;
+  }
+  .landing-desktop-links {
+    display: none !important;
+  }
+  .landing-desktop-actions {
+    display: none !important;
+  }
+  .landing-mobile-toggle {
+    display: flex !important;
+  }
+  .hero-float-left,
+  .hero-float-right {
+    display: none !important;
   }
 }
 
@@ -891,21 +1026,8 @@ tbody tr:hover {
   }
 }
 
-/* Large Tablets / Small Laptops (max-width: 1024px) */
-@media (max-width: 1024px) {
-  .grid-cols-4 {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  }
-}
-
 /* Tablets & Mobile Devices (max-width: 768px) */
 @media (max-width: 768px) {
-  /* Prevent horizontal overflow from floating decorative badges */
-  .hero-float-left,
-  .hero-float-right {
-    display: none !important;
-  }
-
   .grid-cols-3,
   .grid-cols-2 {
     grid-template-columns: 1fr;
@@ -984,10 +1106,23 @@ tbody tr:hover {
   .comparison-card {
     padding: 1.25rem 1rem;
   }
+
+  .hero-pipeline-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.35rem !important;
+  }
+
+  .hero-preview-stage {
+    margin-top: 2rem !important;
+  }
 }
 
 /* Small Smart Phones (max-width: 480px) */
 @media (max-width: 480px) {
+  .hero-pipeline-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
   .page-body {
     padding: 0.85rem 0.65rem 2rem;
   }

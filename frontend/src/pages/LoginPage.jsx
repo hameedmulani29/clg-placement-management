@@ -153,7 +153,7 @@ const LoginPage = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 2rem',
+          padding: '0 clamp(0.75rem, 3vw, 2rem)',
           position: 'relative',
           zIndex: 10,
           borderBottom: '1px solid var(--border-subtle)',

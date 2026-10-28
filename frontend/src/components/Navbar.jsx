@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
+import { getRoleDashboardPath } from '../utils/roleRoutes';
 import {
   Bell,
   LogOut,
@@ -122,9 +123,7 @@ const Navbar = ({ onToggleMobileSidebar, isMobileSidebarOpen }) => {
     : (user?.email?.[0] || 'U').toUpperCase();
 
   const getDashboardPath = () => {
-    if (user?.role === 'admin') return '/admin';
-    if (user?.role === 'recruiter') return '/recruiter';
-    return '/dashboard';
+    return getRoleDashboardPath(user?.role) || '/unauthorized';
   };
 
   return (

@@ -68,7 +68,7 @@ const RegisterStudentPage = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const { registerStudent, loginWithGoogle, isFirebaseConfigured } = useAuth();
+  const { registerStudent, registerWithGoogle, isFirebaseConfigured } = useAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
   const toast = useToast();
   const navigate = useNavigate();
@@ -83,8 +83,7 @@ const RegisterStudentPage = () => {
           ? (formData.customCollegeName || '').trim()
           : formData.collegeName;
 
-      const res = await loginWithGoogle({
-        role: 'student',
+      const res = await registerWithGoogle({
         collegeName: selectedCollege || DEFAULT_COLLEGE,
         department: formData.department,
         graduationYear: Number(formData.graduationYear),
@@ -94,11 +93,8 @@ const RegisterStudentPage = () => {
       });
 
       if (res.success) {
-        toast.success(
-          res.isNewUser ? 'Student registered successfully!' : 'Signed in with Google',
-          'Welcome to your PlaceCloud dashboard.'
-        );
-        navigate('/dashboard');
+        toast.success('Registration successful!', 'Please sign in to continue.');
+        navigate('/login', { state: { registeredEmail: res.email } });
       } else {
         setError(res.message || 'Google registration failed.');
       }
@@ -163,8 +159,8 @@ const RegisterStudentPage = () => {
 
       const res = await registerStudent(payload);
       if (res.success) {
-        toast.success('Registration successful!', 'Welcome to your student placement portal.');
-        navigate('/dashboard');
+        toast.success('Registration successful!', 'Please sign in to continue.');
+        navigate('/login', { state: { registeredEmail: res.email || formData.email.trim() } });
       } else {
         setError(res.message || 'Registration failed. Please check your inputs.');
       }

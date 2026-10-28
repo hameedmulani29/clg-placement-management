@@ -159,7 +159,7 @@ Because Render's free tier uses ephemeral containers, SQLite files reset when th
    | `NODE_ENV` | `production` | Enables production security & logging mode |
    | `PORT` | `5000` | Port for the Express server |
    | `MONGODB_URI` | `mongodb+srv://placecloud_admin:...` | Your MongoDB Atlas connection URI from Step 1 |
-   | `JWT_SECRET` | `placecloud_super_secret_jwt_key_2026_prod` | 32+ character random secret string |
+   | `JWT_SECRET` | Generate a unique random value | Required signing secret; never reuse an example value |
    | `JWT_EXPIRES_IN` | `24h` | Token expiration window |
    | `FRONTEND_URL` | `http://localhost:5173` | *(Temporary placeholder; we will update this in Step 4 with your Vercel URL)* |
 
@@ -276,7 +276,7 @@ PlaceCloud features native **Firebase Google Authentication** for seamless, pass
         ▼ 2. Obtains verified Firebase ID Token (JWT)
   [PlaceCloud Client]
         │
-        ▼ 3. POST /api/v1/auth/google  { idToken, role }
+        ▼ 3. POST /api/v1/auth/google  { idToken }
   [PlaceCloud Backend]
         │
         ▼ 4. Verifies token with Firebase Admin SDK / Google OAuth2
@@ -385,13 +385,16 @@ Open `backend/.env` and specify your Firebase Project ID:
 # Firebase Backend Admin
 FIREBASE_PROJECT_ID=placecloud-xxx
 
+# Optional Firebase Web API key for Identity Toolkit verification fallback
+FIREBASE_API_KEY=
+
 # Optional: Path to service account JSON (or inline JSON string in production)
 FIREBASE_SERVICE_ACCOUNT_KEY=./firebaseServiceAccount.json
 ```
 
 #### 3. Cloud Deployment (Vercel & Render)
 - **On Vercel**: Go to **Project Settings** → **Environment Variables** → Add all `VITE_FIREBASE_*` variables.
-- **On Render**: Go to **Environment** → Add `FIREBASE_PROJECT_ID` and (optionally) `FIREBASE_SERVICE_ACCOUNT_KEY`.
+- **On Render**: Go to **Environment** → Add `FIREBASE_PROJECT_ID`. Configure `FIREBASE_SERVICE_ACCOUNT_KEY` when using a service account, or `FIREBASE_API_KEY` if the Identity Toolkit verification fallback is needed.
 
 ---
 
@@ -401,17 +404,23 @@ FIREBASE_SERVICE_ACCOUNT_KEY=./firebaseServiceAccount.json
    ```bash
    npm run dev
    ```
-2. **Test Student Sign-In / Sign-Up**:
+2. **Test Google Sign-In**:
    - Open your browser at `http://localhost:5173/login`.
-   - Ensure the **Student** tab is selected.
-   - Click **Continue with Google (Student)**.
+   - Choose **Student**, **Recruiter**, or **TPO Officer**.
+   - Click **Continue with Google**.
    - In the Google popup, choose your Google account.
-   - You will be authenticated immediately, your student profile will be auto-provisioned, and you will land on the **Student Dashboard** (`/dashboard`).
-3. **Test Fast-Track Intake**:
+   - Existing accounts use the role saved in the database. A new Google identity signing in to the Student portal creates an account without fabricated student or academic details, then displays a blocking profile-completion modal over the dashboard. Google supplies the student's name and verified email; the student enters their roll number, department, graduation year, current GPA, active backlogs, Indian mobile number, and college.
+   - Recruiter and TPO Officer accounts must already be provisioned by an administrator. Selecting those portals never creates a privileged account.
+3. **Test Student Registration**:
    - Open `http://localhost:5173/register-student`.
-   - Click **Continue & Register with Google** for 1-click passwordless registration.
+   - Complete the form and submit. Registration returns to the login page with the email prefilled; enter the password and sign in explicitly.
+   - The Google registration option also returns to login after creating a new student account. Existing Google accounts should use the login page.
 4. **Test Existing Account Matching**:
-   - If an account already exists with the same email (e.g. `arjun.sharma@college.edu`), signing in with that Google account automatically links and signs into the existing profile without duplicating records.
+   - If an account already exists with the same verified email, Google sign-in links it if it is not already linked and uses its existing database role.
+5. **Test role/session isolation**:
+   - Sign in as different users in independently opened browser tabs, refresh each tab, and log out of one. Each tab's backend token and Firebase session are scoped to that tab.
+
+The backend JWT, user, and profile are kept in `sessionStorage` so refreshes restore the current tab without making another tab's API requests use its identity. Firebase Google Auth also uses session persistence. New Google sign-ins can self-register only as students; recruiter and admin (TPO Officer) access comes from database records provisioned by an authorized operator.
 
 ---
 
@@ -500,11 +509,13 @@ MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/place
 SQLITE_DB_PATH=./data/placement.db
 
 # JWT Security
-JWT_SECRET=super_secret_jwt_key_placement_system_2026_change_in_production
+JWT_SECRET=<generate-a-unique-random-secret>
 JWT_EXPIRES_IN=24h
 
 # Firebase Google Authentication (Backend token verification)
 FIREBASE_PROJECT_ID=your_firebase_project_id
+# Optional Firebase Web API key for Identity Toolkit verification fallback
+FIREBASE_API_KEY=
 # Optional: Path to Firebase Service Account JSON or inline JSON string
 FIREBASE_SERVICE_ACCOUNT_KEY=
 
@@ -611,7 +622,8 @@ All API routes are prefixed with `/api/v1`.
 | **System** | `GET` | `/health` | Public | System uptime & database connection status |
 | **Auth** | `POST` | `/auth/login` | Public | User authentication & JWT issuance |
 | **Auth** | `POST` | `/auth/register-student` | Public | Student account registration |
-| **Auth** | `POST` | `/auth/google` | Public | Firebase Google sign-in & instant account creation |
+| **Auth** | `POST` | `/auth/google` | Public | Firebase Google sign-in; creates and signs in new Student identities only |
+| **Auth** | `POST` | `/auth/google/register-student` | Public | Explicit Student Google registration (no session issued) |
 | **Auth** | `GET` | `/auth/me` | Authenticated | Fetch authenticated user profile |
 | **Students** | `GET` | `/students/profile` | Student | Get current student profile |
 | **Students** | `PUT` | `/students/profile` | Student | Update student academic & skill details |

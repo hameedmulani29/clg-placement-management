@@ -45,9 +45,9 @@ const Sidebar = ({ isOpen, onClose }) => {
   ];
 
   let links = [];
-  let roleTitle = 'Placement Portal';
-  let RoleIcon = GraduationCap;
-  let roleTag = 'Campus Operations';
+  let roleTitle = 'Unassigned Portal';
+  let RoleIcon = Shield;
+  let roleTag = 'Contact your administrator';
 
   if (user?.role === 'admin') {
     links = adminLinks;
@@ -59,7 +59,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     roleTitle = 'Talent Portal';
     RoleIcon = Briefcase;
     roleTag = profile?.companyId?.name || 'Recruiting Partner';
-  } else {
+  } else if (user?.role === 'student') {
     links = studentLinks;
     roleTitle = 'Student Portal';
     RoleIcon = GraduationCap;

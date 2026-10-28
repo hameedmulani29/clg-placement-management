@@ -39,6 +39,7 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register-student" element={<RegisterStudentPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
+      <Route path="/complete-profile" element={<Navigate to="/dashboard" replace />} />
 
       {/* Protected Student Portal */}
       <Route

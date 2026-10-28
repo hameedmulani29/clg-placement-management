@@ -7,38 +7,66 @@ import {
 } from '../config/firebase';
 
 const AuthContext = createContext(null);
+const AUTH_STORAGE_KEYS = ['token', 'user', 'profile'];
+
+const readStoredJson = (key) => {
+  const saved = sessionStorage.getItem(key);
+  if (!saved) return null;
+
+  try {
+    return JSON.parse(saved);
+  } catch (error) {
+    console.warn(`Removing invalid stored authentication data (${key}).`);
+    sessionStorage.removeItem(key);
+    return null;
+  }
+};
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('user');
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [profile, setProfile] = useState(() => {
-    const saved = localStorage.getItem('profile');
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [token, setToken] = useState(() => localStorage.getItem('token') || null);
+  const [user, setUser] = useState(() => readStoredJson('user'));
+  const [profile, setProfile] = useState(() => readStoredJson('profile'));
+  const [token, setToken] = useState(() => sessionStorage.getItem('token') || null);
   const [loading, setLoading] = useState(true);
+
+  const clearSession = () => {
+    AUTH_STORAGE_KEYS.forEach((key) => sessionStorage.removeItem(key));
+    setToken(null);
+    setUser(null);
+    setProfile(null);
+    firebaseSignOut().catch((error) => {
+      console.error('Firebase sign-out failed:', error);
+    });
+  };
 
   // Sync session on mount
   useEffect(() => {
     const initAuth = async () => {
-      const storedToken = localStorage.getItem('token');
+      AUTH_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
+      const storedToken = sessionStorage.getItem('token');
       if (storedToken) {
         try {
           const res = await api.get('/auth/me');
           if (res.data.success) {
             setUser(res.data.data.user);
             setProfile(res.data.data.profile);
-            localStorage.setItem('user', JSON.stringify(res.data.data.user));
+            sessionStorage.setItem('user', JSON.stringify(res.data.data.user));
             if (res.data.data.profile) {
-              localStorage.setItem('profile', JSON.stringify(res.data.data.profile));
+              sessionStorage.setItem('profile', JSON.stringify(res.data.data.profile));
+            } else {
+              sessionStorage.removeItem('profile');
             }
+          } else {
+            logout();
           }
         } catch (err) {
           console.warn('Session verification failed, logging out.');
           logout();
         }
+      } else {
+        sessionStorage.removeItem('user');
+        sessionStorage.removeItem('profile');
+        setUser(null);
+        setProfile(null);
       }
       setLoading(false);
     };
@@ -53,10 +81,12 @@ export const AuthProvider = ({ children }) => {
       setToken(newToken);
       setUser(newUser);
       setProfile(newProfile);
-      localStorage.setItem('token', newToken);
-      localStorage.setItem('user', JSON.stringify(newUser));
+      sessionStorage.setItem('token', newToken);
+      sessionStorage.setItem('user', JSON.stringify(newUser));
       if (newProfile) {
-        localStorage.setItem('profile', JSON.stringify(newProfile));
+        sessionStorage.setItem('profile', JSON.stringify(newProfile));
+      } else {
+        sessionStorage.removeItem('profile');
       }
       return { success: true, role: newUser.role };
     }
@@ -70,16 +100,34 @@ export const AuthProvider = ({ children }) => {
       ...extraData,
     });
     if (res.data.success) {
-      const { token: newToken, user: newUser, profile: newProfile, isNewUser } = res.data.data;
+      const {
+        token: newToken,
+        user: newUser,
+        profile: newProfile,
+        isNewUser,
+        accountCreated,
+      } = res.data.data;
+      if (isNewUser && !newToken) {
+        clearSession();
+        return {
+          success: true,
+          role: newUser.role,
+          isNewUser,
+          email: newUser.email,
+        };
+      }
+
       setToken(newToken);
       setUser(newUser);
       setProfile(newProfile);
-      localStorage.setItem('token', newToken);
-      localStorage.setItem('user', JSON.stringify(newUser));
+      sessionStorage.setItem('token', newToken);
+      sessionStorage.setItem('user', JSON.stringify(newUser));
       if (newProfile) {
-        localStorage.setItem('profile', JSON.stringify(newProfile));
+        sessionStorage.setItem('profile', JSON.stringify(newProfile));
+      } else {
+        sessionStorage.removeItem('profile');
       }
-      return { success: true, role: newUser.role, isNewUser };
+      return { success: true, role: newUser.role, isNewUser: false, accountCreated: !!accountCreated };
     }
     return { success: false, message: res.data.message };
   };
@@ -87,26 +135,46 @@ export const AuthProvider = ({ children }) => {
   const registerStudent = async (studentData) => {
     const res = await api.post('/auth/register-student', studentData);
     if (res.data.success) {
-      const { token: newToken, user: newUser, profile: newProfile } = res.data.data;
-      setToken(newToken);
-      setUser(newUser);
-      setProfile(newProfile);
-      localStorage.setItem('token', newToken);
-      localStorage.setItem('user', JSON.stringify(newUser));
-      localStorage.setItem('profile', JSON.stringify(newProfile));
-      return { success: true };
+      clearSession();
+      return { success: true, email: res.data.data.email };
     }
     return { success: false, message: res.data.message };
   };
 
+  const registerWithGoogle = async (extraData = {}) => {
+    const { idToken } = await signInWithGooglePopup();
+    const res = await api.post('/auth/google/register-student', { idToken, ...extraData });
+    if (!res.data.success) {
+      return { success: false, message: res.data.message };
+    }
+
+    clearSession();
+    if (!res.data.data.isNewUser) {
+      return {
+        success: false,
+        message: 'This Google account is already registered. Please sign in from the login page.',
+      };
+    }
+
+    return {
+      success: true,
+      email: res.data.data.user.email,
+      role: res.data.data.user.role,
+    };
+  };
+
+  const completeStudentProfile = async (profileData) => {
+    const res = await api.put('/students/me', profileData);
+    if (res.data.success) {
+      setProfile(res.data.data);
+      sessionStorage.setItem('profile', JSON.stringify(res.data.data));
+      return res.data.data;
+    }
+    throw new Error(res.data.message || 'Could not complete the student profile.');
+  };
+
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('profile');
-    setToken(null);
-    setUser(null);
-    setProfile(null);
-    firebaseSignOut();
+    clearSession();
   };
 
   const refreshProfile = async () => {
@@ -115,9 +183,11 @@ export const AuthProvider = ({ children }) => {
       if (res.data.success) {
         setUser(res.data.data.user);
         setProfile(res.data.data.profile);
-        localStorage.setItem('user', JSON.stringify(res.data.data.user));
+        sessionStorage.setItem('user', JSON.stringify(res.data.data.user));
         if (res.data.data.profile) {
-          localStorage.setItem('profile', JSON.stringify(res.data.data.profile));
+          sessionStorage.setItem('profile', JSON.stringify(res.data.data.profile));
+        } else {
+          sessionStorage.removeItem('profile');
         }
       }
     } catch (e) {
@@ -137,6 +207,8 @@ export const AuthProvider = ({ children }) => {
         login,
         loginWithGoogle,
         registerStudent,
+        registerWithGoogle,
+        completeStudentProfile,
         logout,
         refreshProfile,
       }}

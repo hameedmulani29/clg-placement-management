@@ -11,6 +11,11 @@ const userSchema = new mongoose.Schema(
       trim: true,
       match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address'],
     },
+    displayName: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     password: {
       type: String,
       required: function () {

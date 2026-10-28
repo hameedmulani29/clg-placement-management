@@ -1,13 +1,16 @@
-const admin = require('firebase-admin');
+const { cert, getApp, getApps, initializeApp } = require('firebase-admin/app');
 const fs = require('fs');
 const path = require('path');
 
 let firebaseAdminInitialized = false;
+let firebaseApp = null;
 
 const initFirebaseAdmin = () => {
-  if (firebaseAdminInitialized || (Array.isArray(admin.apps) && admin.apps.length > 0)) {
+  const apps = getApps();
+  if (firebaseAdminInitialized || apps.length > 0) {
     firebaseAdminInitialized = true;
-    return admin;
+    firebaseApp = apps[0] || getApp();
+    return firebaseApp;
   }
 
   try {
@@ -35,23 +38,23 @@ const initFirebaseAdmin = () => {
       }
 
       if (credentials) {
-        admin.initializeApp({
-          credential: admin.credential.cert(credentials),
+        firebaseApp = initializeApp({
+          credential: cert(credentials),
           projectId: projectId || credentials.project_id,
         });
         firebaseAdminInitialized = true;
         console.log('[Firebase Admin] Initialized successfully with Service Account Key.');
-        return admin;
+        return firebaseApp;
       }
     }
 
     if (projectId) {
-      admin.initializeApp({
+      firebaseApp = initializeApp({
         projectId,
       });
       firebaseAdminInitialized = true;
       console.log(`[Firebase Admin] Initialized with Project ID: ${projectId}`);
-      return admin;
+      return firebaseApp;
     }
 
     console.log('[Firebase Admin] No Service Account Key or Project ID found. Fallback token verification enabled.');
@@ -59,7 +62,7 @@ const initFirebaseAdmin = () => {
     console.warn(`[Firebase Admin Warning] Could not initialize Firebase Admin SDK: ${error.message}`);
   }
 
-  return admin;
+  return null;
 };
 
 // Attempt initialization on startup
@@ -78,9 +81,10 @@ const verifyFirebaseIdToken = async (idToken) => {
   }
 
   // 1. Try Firebase Admin SDK verification if configured
-  if (firebaseAdminInitialized && Array.isArray(admin.apps) && admin.apps.length > 0) {
+  if (firebaseAdminInitialized && firebaseApp) {
     try {
-      const decoded = await admin.auth().verifyIdToken(idToken);
+      const { getAuth } = require('firebase-admin/auth');
+      const decoded = await getAuth(firebaseApp).verifyIdToken(idToken);
       return {
         uid: decoded.uid,
         email: decoded.email,
@@ -94,11 +98,10 @@ const verifyFirebaseIdToken = async (idToken) => {
     }
   }
 
-  // 2. Try Google Identity Toolkit endpoint if API key is provided
+  // 2. Try Google Identity Toolkit endpoint if an API key is configured
   const apiKey =
     process.env.FIREBASE_API_KEY ||
-    process.env.VITE_FIREBASE_API_KEY ||
-    'AIzaSyDSOuBhqsVE0sJ_a7yKnv5tsbiWIxcl65s';
+    process.env.VITE_FIREBASE_API_KEY;
 
   if (apiKey && process.env.NODE_ENV !== 'test') {
     try {
@@ -126,54 +129,12 @@ const verifyFirebaseIdToken = async (idToken) => {
     }
   }
 
-  // 3. Fallback: Parse and validate Firebase JWT payload (signature verified via HTTPS transport)
-  try {
-    const parts = idToken.split('.');
-    if (parts.length === 3) {
-      const payloadJson = Buffer.from(parts[1], 'base64').toString('utf8');
-      const payload = JSON.parse(payloadJson);
-      const now = Math.floor(Date.now() / 1000);
-
-      if (payload.exp && payload.exp < now) {
-        const expErr = new Error('Firebase token has expired. Please sign in again.');
-        expErr.statusCode = 401;
-        throw expErr;
-      }
-
-      // Verify token issuer is Google/Firebase when present
-      const validIssuer =
-        !payload.iss ||
-        payload.iss.startsWith('https://securetoken.google.com/') ||
-        payload.iss.includes('accounts.google.com');
-
-      if (!validIssuer) {
-        const issErr = new Error('Invalid token issuer. Token is not from Firebase or Google.');
-        issErr.statusCode = 401;
-        throw issErr;
-      }
-
-      if (payload.email) {
-        return {
-          uid: payload.user_id || payload.sub || payload.uid,
-          email: payload.email,
-          name: payload.name || payload.email.split('@')[0],
-          picture: payload.picture || null,
-          emailVerified: !!payload.email_verified,
-        };
-      }
-    }
-  } catch (parseErr) {
-    if (parseErr.statusCode) throw parseErr;
-    console.warn(`[Firebase Fallback Warning] Token parse error: ${parseErr.message}`);
-  }
-
   const authErr = new Error('Failed to verify Firebase ID token. Please ensure your Firebase credentials are valid.');
   authErr.statusCode = 401;
   throw authErr;
 };
 
 module.exports = {
-  admin,
   initFirebaseAdmin,
   verifyFirebaseIdToken,
 };

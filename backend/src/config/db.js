@@ -15,6 +15,7 @@ const SCHEMA_DDL = `
 CREATE TABLE IF NOT EXISTS users (
   _id TEXT PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
+  displayName TEXT DEFAULT '',
   password TEXT NOT NULL,
   role TEXT NOT NULL CHECK(role IN ('student', 'admin', 'recruiter')),
   collegeName TEXT DEFAULT 'COEP Technological University',
@@ -312,6 +313,7 @@ const runSQLiteMigrations = (dbInstance) => {
   if (!dbInstance) return;
   const migrations = [
     "ALTER TABLE users ADD COLUMN collegeName TEXT DEFAULT 'COEP Technological University';",
+    "ALTER TABLE users ADD COLUMN displayName TEXT DEFAULT '';",
     "ALTER TABLE users ADD COLUMN googleId TEXT DEFAULT NULL;",
     "ALTER TABLE users ADD COLUMN avatarUrl TEXT DEFAULT NULL;",
     "ALTER TABLE users ADD COLUMN authProvider TEXT DEFAULT 'local';",

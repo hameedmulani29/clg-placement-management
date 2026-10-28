@@ -2,9 +2,11 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from './LoadingSpinner';
+import { getRoleDashboardPath } from '../utils/roleRoutes';
+import CompleteStudentProfilePage from '../pages/CompleteStudentProfilePage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user, profile, isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -19,8 +21,19 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (!getRoleDashboardPath(user?.role) || (allowedRoles && !allowedRoles.includes(user.role))) {
     return <Navigate to="/unauthorized" replace />;
+  }
+
+  if (user.role === 'student' && !profile) {
+    return (
+      <>
+        <div aria-hidden="true" inert="">
+          {children}
+        </div>
+        <CompleteStudentProfilePage />
+      </>
+    );
   }
 
   return children;

@@ -52,7 +52,7 @@ const studentProfileSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
-      required: [true, 'Phone number is required'],
+      default: '',
       trim: true,
     },
     skills: {

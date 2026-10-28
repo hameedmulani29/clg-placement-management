@@ -1,5 +1,12 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut } from 'firebase/auth';
+import {
+  browserSessionPersistence,
+  getAuth,
+  GoogleAuthProvider,
+  setPersistence,
+  signInWithPopup,
+  signOut as fbSignOut,
+} from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
@@ -58,6 +65,7 @@ export const signInWithGooglePopup = async () => {
   }
 
   try {
+    await setPersistence(auth, browserSessionPersistence);
     const result = await signInWithPopup(auth, googleProvider);
     const idToken = await result.user.getIdToken();
     return {
@@ -81,7 +89,13 @@ export const signInWithGooglePopup = async () => {
         `Firebase Network Error: Unable to communicate with Google authentication servers. Please check your internet connection, ensure third-party cookies or popups are not blocked, and verify that '${window.location.hostname}' is in Firebase Authorized Domains.`
       );
     }
-    throw err;
+    if (err.code === 'auth/invalid-api-key' || err.code === 'auth/invalid-credential') {
+      throw new Error('Google sign-in is not configured correctly. Please contact the portal administrator.');
+    }
+    if (err.code === 'auth/operation-not-allowed') {
+      throw new Error('Google sign-in is disabled for this Firebase project. Please contact the portal administrator.');
+    }
+    throw new Error('Google sign-in could not be completed. Please try again.');
   }
 };
 
@@ -90,9 +104,7 @@ export const signInWithGooglePopup = async () => {
  */
 export const firebaseSignOut = async () => {
   if (auth) {
-    try {
-      await fbSignOut(auth);
-    } catch (_) {}
+    await fbSignOut(auth);
   }
 };
 

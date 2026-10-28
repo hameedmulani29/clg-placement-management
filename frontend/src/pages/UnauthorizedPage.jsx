@@ -2,15 +2,14 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ShieldAlert, ArrowLeft, Home, LogIn } from 'lucide-react';
+import { getRoleDashboardPath } from '../utils/roleRoutes';
 
 const UnauthorizedPage = () => {
   const { user } = useAuth();
 
   const getTargetUrl = () => {
     if (!user) return '/login';
-    if (user.role === 'admin') return '/admin';
-    if (user.role === 'recruiter') return '/recruiter';
-    return '/dashboard';
+    return getRoleDashboardPath(user.role) || '/login';
   };
 
   return (
@@ -76,7 +75,15 @@ const UnauthorizedPage = () => {
             <Home size={16} /> Home
           </Link>
           <Link to={getTargetUrl()} className="btn btn-primary">
-            <ArrowLeft size={16} /> Return to Your Portal
+            {getRoleDashboardPath(user?.role) ? (
+              <>
+                <ArrowLeft size={16} /> Return to Your Portal
+              </>
+            ) : (
+              <>
+                <LogIn size={16} /> Sign In
+              </>
+            )}
           </Link>
         </div>
       </div>

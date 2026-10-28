@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
+import { getRoleDashboardPath } from '../utils/roleRoutes';
 import {
   Cloud,
   Lock,
@@ -10,17 +11,12 @@ import {
   AlertCircle,
   ArrowRight,
   ArrowLeft,
-  CheckCircle2,
   Eye,
   EyeOff,
   Sun,
   Moon,
-  Shield,
-  Briefcase,
-  GraduationCap,
   Loader2,
   Sparkles,
-  Building,
 } from 'lucide-react';
 
 const GoogleIcon = () => (
@@ -44,20 +40,36 @@ const GoogleIcon = () => (
   </svg>
 );
 
+const LOGIN_PORTALS = [
+  { role: 'student', label: 'Student' },
+  { role: 'recruiter', label: 'Recruiter' },
+  { role: 'admin', label: 'TPO Officer' },
+];
+
+const getPortalLabel = (role) => LOGIN_PORTALS.find((portal) => portal.role === role)?.label || role;
+
 const LoginPage = () => {
-  const [email, setEmail] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [selectedRole, setSelectedRole] = useState(() => {
+    const requestedRole = new URLSearchParams(location.search).get('role');
+    const role = requestedRole === 'tpo' ? 'admin' : requestedRole;
+    return LOGIN_PORTALS.some((portal) => portal.role === role) ? role : 'student';
+  });
+  const [email, setEmail] = useState(() => location.state?.registeredEmail || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [activeRoleTab, setActiveRoleTab] = useState('student');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() =>
+    new URLSearchParams(location.search).has('expired')
+      ? 'Your session expired. Please sign in again.'
+      : ''
+  );
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const { login, loginWithGoogle, isFirebaseConfigured } = useAuth();
+  const { login, loginWithGoogle, logout, isFirebaseConfigured } = useAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
   const toast = useToast();
-  const navigate = useNavigate();
-  const location = useLocation();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -67,10 +79,20 @@ const LoginPage = () => {
     try {
       const res = await login(email, password);
       if (res.success) {
-        toast.success('Signed in successfully', `Welcome to the PlaceCloud ${res.role} portal.`);
-        if (res.role === 'admin') navigate('/admin');
-        else if (res.role === 'recruiter') navigate('/recruiter');
-        else navigate('/dashboard');
+        if (res.role !== selectedRole) {
+          logout();
+          const actualPortal = getPortalLabel(res.role);
+          setError(`This account is registered for the ${actualPortal} portal. Select that portal to sign in.`);
+          return;
+        }
+        const dashboardPath = getRoleDashboardPath(res.role);
+        if (!dashboardPath) {
+          logout();
+          setError('Your account does not have a supported portal role. Please contact the administrator.');
+          return;
+        }
+        toast.success('Signed in successfully', `Welcome to the PlaceCloud ${getPortalLabel(res.role)} portal.`);
+        navigate(dashboardPath);
       } else {
         setError(res.message || 'Login failed. Please verify credentials.');
       }
@@ -89,15 +111,27 @@ const LoginPage = () => {
     setGoogleLoading(true);
 
     try {
-      const res = await loginWithGoogle({ role: activeRoleTab });
+      const res = await loginWithGoogle({ portalRole: selectedRole });
       if (res.success) {
+        if (res.isNewUser) {
+          toast.success('Registration successful!', 'Please sign in with Google to continue.');
+          setEmail(res.email);
+          navigate('/login', { state: { registeredEmail: res.email } });
+          return;
+        }
         toast.success(
-          res.isNewUser ? 'Welcome to PlaceCloud!' : 'Signed in with Google',
-          `Logged in to the ${res.role} portal.`
+          'Signed in with Google',
+          res.accountCreated
+            ? 'Your Student account was created. Complete your profile to continue.'
+            : `Logged in to the ${getPortalLabel(res.role)} portal.`
         );
-        if (res.role === 'admin') navigate('/admin');
-        else if (res.role === 'recruiter') navigate('/recruiter');
-        else navigate('/dashboard');
+        const dashboardPath = getRoleDashboardPath(res.role);
+        if (!dashboardPath) {
+          logout();
+          setError('Your account does not have a supported portal role. Please contact the administrator.');
+          return;
+        }
+        navigate(dashboardPath);
       } else {
         setError(res.message || 'Google authentication failed.');
       }
@@ -116,13 +150,6 @@ const LoginPage = () => {
     } finally {
       setGoogleLoading(false);
     }
-  };
-
-  const handleQuickLogin = (demoEmail, demoPassword, role) => {
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    setActiveRoleTab(role);
-    setError('');
   };
 
   return (
@@ -262,97 +289,41 @@ const LoginPage = () => {
             </p>
           </div>
 
-          {/* Interactive Role Switcher Tabs */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '0.4rem',
-              backgroundColor: 'var(--bg-surface-subtle)',
-              padding: '0.35rem',
-              borderRadius: 'var(--radius-md)',
-              marginBottom: '1.5rem',
-              border: '1px solid var(--border-default)',
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                setActiveRoleTab('student');
-                handleQuickLogin('arjun.sharma@college.edu', 'StudentPassword123!', 'student');
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.35rem',
-                padding: '0.55rem 0.25rem',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: 'var(--text-xs)',
-                fontWeight: 'var(--font-weight-semibold)',
-                backgroundColor: activeRoleTab === 'student' ? 'var(--bg-surface)' : 'transparent',
-                color: activeRoleTab === 'student' ? 'var(--primary)' : 'var(--text-secondary)',
-                boxShadow: activeRoleTab === 'student' ? 'var(--shadow-xs)' : 'none',
-                border: activeRoleTab === 'student' ? '1px solid var(--border-default)' : '1px solid transparent',
-              }}
-            >
-              <GraduationCap size={15} />
-              <span>Student</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setActiveRoleTab('recruiter');
-                handleQuickLogin('recruiter.google@google.com', 'RecruiterPassword123!', 'recruiter');
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.35rem',
-                padding: '0.55rem 0.25rem',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: 'var(--text-xs)',
-                fontWeight: 'var(--font-weight-semibold)',
-                backgroundColor: activeRoleTab === 'recruiter' ? 'var(--bg-surface)' : 'transparent',
-                color: activeRoleTab === 'recruiter' ? 'var(--primary)' : 'var(--text-secondary)',
-                boxShadow: activeRoleTab === 'recruiter' ? 'var(--shadow-xs)' : 'none',
-                border: activeRoleTab === 'recruiter' ? '1px solid var(--border-default)' : '1px solid transparent',
-              }}
-            >
-              <Briefcase size={15} />
-              <span>Recruiter</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setActiveRoleTab('admin');
-                handleQuickLogin('admin@college.edu', 'AdminPassword123!', 'admin');
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.35rem',
-                padding: '0.55rem 0.25rem',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: 'var(--text-xs)',
-                fontWeight: 'var(--font-weight-semibold)',
-                backgroundColor: activeRoleTab === 'admin' ? 'var(--bg-surface)' : 'transparent',
-                color: activeRoleTab === 'admin' ? 'var(--primary)' : 'var(--text-secondary)',
-                boxShadow: activeRoleTab === 'admin' ? 'var(--shadow-xs)' : 'none',
-                border: activeRoleTab === 'admin' ? '1px solid var(--border-default)' : '1px solid transparent',
-              }}
-            >
-              <Shield size={15} />
-              <span>TPO Admin</span>
-            </button>
-          </div>
-
           {/* Login Card */}
           <div className="card" style={{ padding: '2.25rem', boxShadow: 'var(--shadow-lg)' }}>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <p style={{ margin: '0 0 0.6rem', color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
+                Choose your portal
+              </p>
+              <div
+                role="group"
+                aria-label="Choose a portal"
+                style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.4rem' }}
+              >
+                {LOGIN_PORTALS.map(({ role, label }) => (
+                  <button
+                    key={role}
+                    type="button"
+                    aria-pressed={selectedRole === role}
+                    onClick={() => {
+                      setSelectedRole(role);
+                      setError('');
+                    }}
+                    className={selectedRole === role ? 'btn btn-primary' : 'btn btn-secondary'}
+                    style={{ padding: '0.6rem 0.35rem', fontSize: 'var(--text-xs)' }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {selectedRole !== 'student' && (
+                <p style={{ margin: '0.55rem 0 0', color: 'var(--text-muted)', fontSize: 'var(--text-xs)' }}>
+                  {selectedRole === 'admin'
+                    ? 'TPO Officer accounts are created by your administrator.'
+                    : 'Recruiter accounts are created by your administrator.'}
+                </p>
+              )}
+            </div>
             {error && (
               <div
                 style={{
@@ -407,9 +378,7 @@ const LoginPage = () => {
                 ) : (
                   <>
                     <GoogleIcon />
-                    <span>
-                      Continue with Google ({activeRoleTab === 'admin' ? 'TPO Admin' : activeRoleTab.charAt(0).toUpperCase() + activeRoleTab.slice(1)})
-                    </span>
+                    <span>Continue with Google</span>
                   </>
                 )}
               </button>
@@ -543,68 +512,6 @@ const LoginPage = () => {
               </button>
             </form>
 
-            {/* Quick Demo Access Bar */}
-            <div
-              style={{
-                marginTop: '1.75rem',
-                paddingTop: '1.25rem',
-                borderTop: '1px solid var(--border-default)',
-              }}
-            >
-              <div
-                style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 'var(--font-weight-bold)',
-                  color: 'var(--text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  marginBottom: '0.75rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <span>⚡ 1-Click Evaluation Credentials</span>
-                <span style={{ fontSize: '0.68rem', color: 'var(--primary)', fontWeight: 'bold' }}>Auto-Fills Form</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => handleQuickLogin('arjun.sharma@college.edu', 'StudentPassword123!', 'student')}
-                  style={{ justifyContent: 'flex-start', textAlign: 'left', padding: '0.55rem 0.85rem' }}
-                >
-                  <GraduationCap size={16} style={{ color: 'var(--success)', flexShrink: 0 }} />
-                  <span style={{ fontSize: '0.8rem' }}>
-                    <strong>Student:</strong> Arjun Sharma (CS, 9.35 CGPA)
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => handleQuickLogin('admin@college.edu', 'AdminPassword123!', 'admin')}
-                  style={{ justifyContent: 'flex-start', textAlign: 'left', padding: '0.55rem 0.85rem' }}
-                >
-                  <Shield size={16} style={{ color: 'var(--color-accent-600)', flexShrink: 0 }} />
-                  <span style={{ fontSize: '0.8rem' }}>
-                    <strong>Admin:</strong> Placement Officer (TPO Cell)
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => handleQuickLogin('recruiter.google@google.com', 'RecruiterPassword123!', 'recruiter')}
-                  style={{ justifyContent: 'flex-start', textAlign: 'left', padding: '0.55rem 0.85rem' }}
-                >
-                  <Briefcase size={16} style={{ color: 'var(--info)', flexShrink: 0 }} />
-                  <span style={{ fontSize: '0.8rem' }}>
-                    <strong>Recruiter:</strong> Google Cloud Platform
-                  </span>
-                </button>
-              </div>
-            </div>
           </div>
 
           {/* Footer Navigation Link */}

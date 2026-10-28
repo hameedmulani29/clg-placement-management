@@ -53,10 +53,20 @@ backend/data/*.db
 *.db-wal
 *.db-shm
 
-# Firebase Service Account Credentials (NEVER commit secrets!)
-*serviceAccount*.json
-*firebase*.json
-*adminsdk*.json
+# Firebase Service Account Credentials and private keys (NEVER commit secrets!)
+**/*serviceAccount*.json
+**/*ServiceAccount*.json
+**/*service-account*.json
+**/*Service-Account*.json
+**/*firebase*.json
+**/*Firebase*.json
+**/*adminsdk*.json
+**/*adminSdk*.json
+**/firebase_config.json
+*.pem
+*.key
+*.p12
+*.pfx
 
 # Documentation & Internal Reports
 /docs/
@@ -67,3 +77,4 @@ report/
 # Markdown documentation files (Allow root README.md)
 *.md
 !README.md
+README.md

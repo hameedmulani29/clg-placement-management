@@ -7,6 +7,11 @@ const { generateToken } = require('../utils/jwtHelper');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
 const { verifyFirebaseIdToken } = require('../config/firebase');
 
+const rollbackUserRegistration = async (userId, ProfileModel) => {
+  await ProfileModel.deleteMany({ userId });
+  await User.findByIdAndDelete(userId);
+};
+
 /**
  * Register a new Student Account & Academic Profile
  * POST /api/v1/auth/register-student
@@ -57,30 +62,28 @@ const registerStudent = async (req, res, next) => {
     await user.save();
 
     // 2. Create StudentProfile document
-    const profile = new StudentProfile({
-      userId: user._id,
-      collegeId: collegeId.toUpperCase(),
-      collegeName: assignedCollege,
-      firstName,
-      lastName,
-      department,
-      graduationYear: Number(graduationYear),
-      cgpa: Number(cgpa),
-      activeBacklogs: Number(activeBacklogs),
-      phone,
-      skills: Array.isArray(skills) ? skills : skills.split(',').map((s) => s.trim()).filter(Boolean),
-    });
-    await profile.save();
-
-    // 3. Issue JWT Token
-    const token = generateToken({
-      id: user._id,
-      email: user.email,
-      role: user.role,
-    });
+    let profile;
+    try {
+      profile = new StudentProfile({
+        userId: user._id,
+        collegeId: collegeId.toUpperCase(),
+        collegeName: assignedCollege,
+        firstName,
+        lastName,
+        department,
+        graduationYear: Number(graduationYear),
+        cgpa: Number(cgpa),
+        activeBacklogs: Number(activeBacklogs),
+        phone,
+        skills: Array.isArray(skills) ? skills : skills.split(',').map((s) => s.trim()).filter(Boolean),
+      });
+      await profile.save();
+    } catch (error) {
+      await rollbackUserRegistration(user._id, StudentProfile);
+      throw error;
+    }
 
     return successResponse(res, 201, 'Student account registered successfully.', {
-      token,
       user,
       profile,
     });
@@ -122,24 +125,23 @@ const registerRecruiter = async (req, res, next) => {
     await user.save();
 
     // Create Recruiter Profile
-    const profile = new RecruiterProfile({
-      userId: user._id,
-      companyId: company._id,
-      designation,
-      phone: phone || '',
-    });
-    await profile.save();
+    let profile;
+    try {
+      profile = new RecruiterProfile({
+        userId: user._id,
+        companyId: company._id,
+        designation,
+        phone: phone || '',
+      });
+      await profile.save();
+    } catch (error) {
+      await rollbackUserRegistration(user._id, RecruiterProfile);
+      throw error;
+    }
 
     const populatedProfile = await RecruiterProfile.findById(profile._id).populate('companyId', 'name logoUrl industry');
 
-    const token = generateToken({
-      id: user._id,
-      email: user.email,
-      role: user.role,
-    });
-
     return successResponse(res, 201, 'Recruiter account registered successfully.', {
-      token,
       user,
       profile: populatedProfile,
     });
@@ -197,6 +199,7 @@ const login = async (req, res, next) => {
       user: {
         _id: user._id,
         email: user.email,
+        displayName: user.displayName || '',
         role: user.role,
         collegeName: user.collegeName || profile?.collegeName || 'COEP Technological University',
         isActive: user.isActive,
@@ -228,6 +231,7 @@ const getMe = async (req, res, next) => {
       user: {
         _id: user._id,
         email: user.email,
+        displayName: user.displayName || '',
         role: user.role,
         collegeName: user.collegeName || profile?.collegeName || 'COEP Technological University',
         isActive: user.isActive,
@@ -242,14 +246,19 @@ const getMe = async (req, res, next) => {
 
 /**
  * Firebase Google Authentication
- * Unified handler for Google Sign-In and Sign-Up
+ * Existing accounts can sign in; new Google identities can enter the Student portal.
  * POST /api/v1/auth/google
  */
-const googleAuth = async (req, res, next) => {
+const googleAuth = async (
+  req,
+  res,
+  next,
+  { allowStudentRegistration = false, autoRegisterStudent = false } = {}
+) => {
+  let newUserToRollback = null;
   try {
     const {
       idToken,
-      role = 'student',
       collegeName,
       department,
       graduationYear,
@@ -267,36 +276,49 @@ const googleAuth = async (req, res, next) => {
     try {
       tokenPayload = await verifyFirebaseIdToken(idToken);
     } catch (tokenErr) {
-      return errorResponse(res, tokenErr.statusCode || 401, tokenErr.message || 'Firebase token verification failed.');
+      return errorResponse(
+        res,
+        tokenErr.statusCode || 401,
+        'Firebase authentication failed. Please try again or contact the portal administrator.'
+      );
     }
-    const { uid, email, name, picture } = tokenPayload;
+    const { uid, email, name, picture, emailVerified } = tokenPayload;
 
-    if (!email) {
-      return errorResponse(res, 400, 'Unable to retrieve verified email from Google account.');
+    if (!uid || !email || !emailVerified) {
+      return errorResponse(res, 401, 'A verified Google email address is required.');
     }
 
     const normalizedEmail = email.toLowerCase().trim();
 
     // 1. Check if user already exists
-    let user = await User.findOne({ email: normalizedEmail });
+    let user = await User.findOne({ email: normalizedEmail }).select('+password');
+    const requestedRole = req.body.portalRole === 'tpo' ? 'admin' : req.body.portalRole;
 
     if (user) {
       // Existing User Flow
       if (!user.isActive) {
         return errorResponse(res, 403, 'Your account has been deactivated. Please contact the administrator.');
       }
+      if (requestedRole && requestedRole !== user.role) {
+        return errorResponse(
+          res,
+          403,
+          `This Google account is registered for the ${user.role === 'admin' ? 'TPO Officer' : user.role} portal. Select that portal to sign in.`
+        );
+      }
 
-      // Support role switching if user explicitly clicked Student, Recruiter, or TPO Admin tab
       let needsSave = false;
-      const requestedRole = ['student', 'recruiter', 'admin'].includes(role) ? role : null;
-      if (requestedRole && user.role !== requestedRole) {
-        user.role = requestedRole;
-        needsSave = true;
+      if (user.googleId && user.googleId !== uid) {
+        return errorResponse(res, 409, 'This email is already linked to a different Google account.');
       }
 
       // Link googleId and avatarUrl if not already set
       if (!user.googleId) {
         user.googleId = uid;
+        needsSave = true;
+      }
+      if (name && !user.displayName) {
+        user.displayName = name;
         needsSave = true;
       }
       if (picture && !user.avatarUrl) {
@@ -311,7 +333,7 @@ const googleAuth = async (req, res, next) => {
       let profile = null;
       if (user.role === 'student') {
         profile = await StudentProfile.findOne({ userId: user._id });
-        if (!profile) {
+        if (!profile && !autoRegisterStudent) {
           const nameParts = (name || '').trim().split(' ');
           const firstName = nameParts[0] || 'Student';
           const lastName = nameParts.slice(1).join(' ') || 'User';
@@ -362,7 +384,8 @@ const googleAuth = async (req, res, next) => {
           _id: user._id,
           email: user.email,
           role: user.role,
-          collegeName: user.collegeName || profile?.collegeName || 'COEP Technological University',
+          collegeName: user.collegeName || profile?.collegeName || '',
+          displayName: user.displayName || name || '',
           avatarUrl: user.avatarUrl || picture,
           isActive: user.isActive,
           createdAt: user.createdAt,
@@ -372,91 +395,123 @@ const googleAuth = async (req, res, next) => {
       });
     }
 
-    // 2. New User Registration Flow
-    const targetRole = ['student', 'recruiter', 'admin'].includes(role) ? role : 'student';
-    const assignedCollege = collegeName ? collegeName.trim() : 'COEP Technological University';
+    if (!allowStudentRegistration && !(autoRegisterStudent && (!requestedRole || requestedRole === 'student'))) {
+      return errorResponse(
+        res,
+        404,
+        'No portal account is registered for this Google identity. Register first or contact your administrator.'
+      );
+    }
+
+    // Google self-registration can only create Student accounts.
+    const assignedCollege = autoRegisterStudent
+      ? ''
+      : collegeName
+        ? collegeName.trim()
+        : 'COEP Technological University';
     const randomPassword = crypto.randomBytes(32).toString('hex');
 
     user = new User({
       email: normalizedEmail,
       password: randomPassword,
-      role: targetRole,
+      role: 'student',
       collegeName: assignedCollege,
       googleId: uid,
+      displayName: name || '',
       avatarUrl: picture || null,
       authProvider: 'google',
       isActive: true,
     });
     await user.save();
+    newUserToRollback = user;
+
+    if (autoRegisterStudent) {
+      const token = generateToken({
+        id: user._id,
+        email: user.email,
+        displayName: name || '',
+        role: user.role,
+      });
+
+      return successResponse(res, 200, 'Google account created. Complete your student profile to continue.', {
+        token,
+        user: {
+          _id: user._id,
+          email: user.email,
+          displayName: user.displayName || name || '',
+          role: user.role,
+          collegeName: user.collegeName,
+          avatarUrl: user.avatarUrl,
+          isActive: user.isActive,
+          createdAt: user.createdAt,
+        },
+        profile: null,
+        accountCreated: true,
+        isNewUser: false,
+        profileComplete: false,
+      });
+    }
 
     let profile = null;
     const nameParts = (name || '').trim().split(' ');
     const firstName = nameParts[0] || 'Student';
     const lastName = nameParts.slice(1).join(' ') || 'User';
 
-    if (targetRole === 'student') {
-      let finalCollegeId = collegeId ? collegeId.toUpperCase().trim() : null;
-      if (!finalCollegeId) {
+    let finalCollegeId = collegeId ? collegeId.toUpperCase().trim() : null;
+    if (!finalCollegeId) {
+      finalCollegeId = `STU-${Math.floor(100000 + Math.random() * 900000)}`;
+      let existingCId = await StudentProfile.findOne({ collegeId: finalCollegeId });
+      while (existingCId) {
         finalCollegeId = `STU-${Math.floor(100000 + Math.random() * 900000)}`;
-        let existingCId = await StudentProfile.findOne({ collegeId: finalCollegeId });
-        while (existingCId) {
-          finalCollegeId = `STU-${Math.floor(100000 + Math.random() * 900000)}`;
-          existingCId = await StudentProfile.findOne({ collegeId: finalCollegeId });
-        }
-      }
-
-      profile = new StudentProfile({
-        userId: user._id,
-        collegeId: finalCollegeId,
-        collegeName: assignedCollege,
-        firstName,
-        lastName,
-        department: department || 'Computer Science',
-        graduationYear: Number(graduationYear) || (new Date().getFullYear() + 1),
-        cgpa: Number(cgpa) || 8.0,
-        activeBacklogs: 0,
-        phone: phone || '',
-        skills: ['Problem Solving', 'Data Structures', 'Web Development'],
-      });
-      await profile.save();
-    } else if (targetRole === 'recruiter') {
-      const defaultCompany = await Company.findOne({});
-      profile = new RecruiterProfile({
-        userId: user._id,
-        companyId: defaultCompany ? defaultCompany._id : null,
-        designation: 'Talent Acquisition Partner',
-        phone: phone || '',
-      });
-      await profile.save();
-      if (defaultCompany) {
-        profile = await RecruiterProfile.findById(profile._id).populate('companyId', 'name logoUrl industry website');
+        existingCId = await StudentProfile.findOne({ collegeId: finalCollegeId });
       }
     }
 
-    const token = generateToken({
-      id: user._id,
-      email: user.email,
-      role: user.role,
+    profile = new StudentProfile({
+      userId: user._id,
+      collegeId: finalCollegeId,
+      collegeName: assignedCollege,
+      firstName,
+      lastName,
+      department: department || 'Computer Science',
+      graduationYear: Number(graduationYear) || (new Date().getFullYear() + 1),
+      cgpa: Number(cgpa) || 8.0,
+      activeBacklogs: 0,
+      phone: phone || '',
+      skills: ['Problem Solving', 'Data Structures', 'Web Development'],
     });
+    await profile.save();
 
-    return successResponse(res, 201, 'Google account registered and authenticated successfully.', {
-      token,
-      user: {
-        _id: user._id,
-        email: user.email,
-        role: user.role,
-        collegeName: user.collegeName || profile?.collegeName || assignedCollege,
-        avatarUrl: user.avatarUrl || picture,
-        isActive: user.isActive,
-        createdAt: user.createdAt,
-      },
+    const userData = {
+      _id: user._id,
+      email: user.email,
+      displayName: user.displayName || name || '',
+      role: user.role,
+      collegeName: user.collegeName || profile?.collegeName || assignedCollege,
+      avatarUrl: user.avatarUrl || picture,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+    };
+
+    return successResponse(res, 201, 'Google account registered successfully. Please sign in to continue.', {
+      user: userData,
       profile,
       isNewUser: true,
     });
   } catch (error) {
+    if (newUserToRollback) {
+      try {
+        await rollbackUserRegistration(newUserToRollback._id, StudentProfile);
+      } catch (rollbackError) {
+        return next(rollbackError);
+      }
+    }
     next(error);
   }
 };
+
+const loginWithGoogle = (req, res, next) => googleAuth(req, res, next, { autoRegisterStudent: true });
+const registerGoogleStudent = (req, res, next) => googleAuth(req, res, next, { allowStudentRegistration: true });
 
 /**
  * Logout
@@ -471,6 +526,8 @@ module.exports = {
   registerRecruiter,
   login,
   googleAuth,
+  loginWithGoogle,
+  registerGoogleStudent,
   getMe,
   logout,
 };

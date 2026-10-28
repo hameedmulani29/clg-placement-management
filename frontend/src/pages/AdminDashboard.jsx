@@ -84,7 +84,7 @@ const AdminDashboard = () => {
   };
 
   const handleExportCSV = () => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     const cleanBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
     const baseUrl = cleanBase ? `${cleanBase}/api/v1` : '/api/v1';
     window.open(`${baseUrl}/reports/export-csv?token=${token}`, '_blank');
